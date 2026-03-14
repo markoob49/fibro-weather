@@ -1,0 +1,2701 @@
+<!DOCTYPE html>
+<html lang="ru" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f0d14">
+<title>ФиброПогода 🌿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Spectral:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:           #f4f0ed;
+  --surface:      #fdfbf9;
+  --surface2:     #ede9e4;
+  --border:       #ddd6cc;
+  --border2:      #c9bfb3;
+  --text:         #2e2820;
+  --muted:        #877870;
+  --dim:          #b5a99e;
+  --accent:       #7e6e9a;
+  --accent-glow:  rgba(126,110,154,.13);
+  --low:          #5a8a6a;
+  --low-glow:     rgba(90,138,106,.13);
+  --mod:          #a07840;
+  --mod-glow:     rgba(160,120,64,.13);
+  --high:         #a05060;
+  --high-glow:    rgba(160,80,96,.13);
+  --teal:         #5a8080;
+  --teal-glow:    rgba(90,128,128,.12);
+  --lavender:     #7e6e9a;
+  --lav-glow:     rgba(126,110,154,.13);
+  --r:            8px;
+  --r2:           12px;
+  --r3:           16px;
+  --shadow:       0 4px 20px rgba(46,40,32,.10);
+  --shadow-sm:    0 1px 6px rgba(46,40,32,.08);
+  --font:         'JetBrains Mono', monospace;
+  --mono:         'JetBrains Mono', monospace;
+  --serif:        'Spectral', serif;
+  --t:            .2s ease;
+}
+
+[dir="rtl"] { --font: 'JetBrains Mono', monospace; }
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse at 20% 0%, rgba(126,110,154,.12) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 100%, rgba(90,138,106,.08) 0%, transparent 50%);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+#app { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ── HEADER ── */
+#hdr {
+  background: rgba(244,240,237,.93);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 18px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0; z-index: 10;
+}
+#hdr-title {
+  font-family: var(--serif); font-style: italic; font-weight: 300;
+  font-size: .95rem; letter-spacing: .02em; color: var(--accent);
+}
+#hdr-title em { font-style: normal; color: var(--muted); font-family: var(--mono); font-size: .7rem; font-weight: 300; margin-left: 8px; }
+#hdr-right { display: flex; align-items: center; gap: 8px; }
+
+#weather-pill {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
+  padding: 4px 10px; font-size: .7rem; cursor: pointer; transition: var(--t);
+  font-family: var(--mono); letter-spacing: .03em;
+}
+#weather-pill:hover { border-color: var(--accent); }
+#hdr-temp { color: var(--mod); font-weight: 600; }
+#hdr-pm   { color: var(--muted); font-size: .65rem; }
+
+.lp-btn {
+  background: none; border: 1px solid var(--border); color: var(--muted);
+  border-radius: 4px; padding: 3px 7px; font-size: .65rem; font-weight: 400;
+  cursor: pointer; font-family: var(--mono); transition: var(--t);
+}
+.lp-btn.lp-act { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+.lp-btn:hover  { border-color: var(--accent); color: var(--accent); }
+
+/* ── SCROLL + TABS ── */
+#scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: 72px; }
+
+#nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
+  background: rgba(244,240,237,.96); backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+  display: flex; padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.nb {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  padding: 8px 2px 6px; gap: 3px; cursor: pointer;
+  border: none; background: none; color: var(--dim); font-size: .58rem; font-weight: 400;
+  font-family: var(--mono); transition: color var(--t); position: relative;
+  letter-spacing: .04em;
+}
+.nb svg { width: 18px; height: 18px; flex-shrink: 0; }
+.nb.on { color: var(--accent); }
+.nb.on::before {
+  content: ''; position: absolute; top: 0; left: 25%; right: 25%;
+  height: 1px; background: var(--accent);
+}
+.nb:active { opacity: .7; }
+
+.tab { display: none; padding: 20px 18px; }
+.tab.on { display: block; animation: fadeUp .2s ease; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── CARDS ── */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r2); padding: 18px; margin-bottom: 12px; position: relative;
+}
+.card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(126,110,154,.25), transparent);
+}
+.card-sm { padding: 11px 13px; border-radius: var(--r); }
+.c-hdr   { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.c-title { font-size: .6rem; font-weight: 400; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; }
+.c-val   { font-size: .72rem; color: var(--accent); }
+
+/* ── SECTION HEADER ── */
+.s-hdr   { display: flex; align-items: center; gap: 12px; margin: 18px 0 10px; }
+.s-title { font-size: .6rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.s-line  { flex: 1; height: 1px; background: var(--border); }
+
+/* ── PRESSURE HERO ── */
+.hero-grid {
+  display: grid; grid-template-columns: 1fr auto;
+  align-items: center; gap: 12px;
+}
+.pres-big { display: flex; align-items: baseline; gap: 4px; line-height: 1; font-family: var(--mono); }
+.pres-val { font-size: 3.8rem; font-weight: 300; color: var(--text); transition: color .5s; }
+.pres-unit { font-size: .72rem; color: var(--muted); align-self: flex-end; margin-bottom: 8px; }
+.pres-label { font-size: .58rem; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-top: 2px; }
+
+.delta-block {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+  padding: 10px 14px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r);
+  min-width: 80px;
+}
+.delta-val { font-size: 1.6rem; font-weight: 300; font-family: var(--mono); }
+.delta-lbl { font-size: .56rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; text-align: right; }
+.delta-up   { color: var(--mod); }
+.delta-dn   { color: var(--accent); }
+.delta-flat { color: var(--low); }
+
+/* ── RISK BADGE ── */
+.spill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 6px; font-size: .74rem; font-weight: 600;
+  letter-spacing: .06em; border: 1px solid; margin-top: 8px; transition: all .5s;
+}
+.sp-low  { background: var(--low-glow);     border-color: var(--low);    color: var(--low); }
+.sp-mod  { background: var(--mod-glow);     border-color: var(--mod);    color: var(--mod); }
+.sp-high { background: var(--high-glow);    border-color: var(--high);   color: var(--high); animation: pulse 2s ease infinite; }
+.sp-pers::after { content: ' ✦'; font-size: .6rem; opacity: .7; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+.risk-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+/* ── FORECAST BARCHART ── */
+.fc-wrap {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 14px; margin-top: 12px;
+}
+.fc-bars {
+  display: flex; align-items: flex-end; gap: 3px; height: 52px; margin-bottom: 6px;
+}
+.fc-bar {
+  flex: 1; border-radius: 3px 3px 0 0; min-height: 4px; transition: height .4s ease;
+  cursor: default;
+}
+.fc-bar.low  { background: var(--low); opacity: .75; }
+.fc-bar.mod  { background: var(--mod); opacity: .85; }
+.fc-bar.high { background: var(--high); }
+.fc-threshold {
+  position: relative; border-top: 1px dashed rgba(160,80,96,.4);
+  font-size: .56rem; color: var(--high); text-align: right;
+  padding-top: 3px; margin-bottom: 4px;
+}
+.fc-times { display: flex; justify-content: space-between; font-size: .56rem; color: var(--dim); }
+
+/* ── ALERT BANNERS ── */
+.abanner { border-radius: var(--r); padding: 10px 13px; display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; border: 1px solid; }
+.ab-danger  { background: var(--high-glow);    border-color: rgba(160,80,96,.4); }
+.ab-warning { background: var(--mod-glow);     border-color: rgba(160,120,64,.4); }
+.ab-info    { background: var(--accent-glow);  border-color: rgba(126,110,154,.4); }
+.ab-ok      { background: var(--low-glow);     border-color: rgba(90,138,106,.4); }
+.ab-icon    { font-size: .9rem; flex-shrink: 0; margin-top: 2px; }
+.ab strong  { font-size: .72rem; font-weight: 600; color: var(--text); display: block; }
+.ab p       { font-size: .65rem; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+
+/* ── WEATHER MINI CARDS ── */
+.wg  { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; }
+.wc  {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 11px 10px; display: flex; flex-direction: column; gap: 3px;
+}
+.wc-icon { font-size: .95rem; }
+.wc-val  { font-size: 1.25rem; font-weight: 300; color: var(--text); font-family: var(--mono); }
+.wc-lbl  { font-size: .57rem; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+
+/* ── HAMSIN BANNER ── */
+.hamsin {
+  background: rgba(160,80,96,.07); border: 1px solid rgba(160,80,96,.28);
+  border-radius: var(--r); padding: 12px 13px;
+  display: flex; align-items: flex-start; gap: 11px; margin-bottom: 12px;
+}
+.hamsin-icon { font-size: 1.2rem; flex-shrink: 0; line-height: 1; margin-top: 1px; }
+.hamsin strong { font-size: .74rem; color: var(--high); display: block; font-weight: 600; }
+.hamsin span   { font-size: .67rem; color: var(--muted); line-height: 1.5; }
+
+/* ── RECENT ENTRIES ── */
+.rec {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-left: 3px solid var(--border2);
+  border-radius: 6px; padding: 9px 12px; margin-bottom: 6px;
+  display: flex; align-items: center; justify-content: space-between;
+  animation: slideIn .25s ease;
+}
+.rec.r-low  { border-left-color: var(--low); }
+.rec.r-mod  { border-left-color: var(--mod); }
+.rec.r-high { border-left-color: var(--high); }
+@keyframes slideIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+.rec-pain { font-size: 1.4rem; font-weight: 300; font-family: var(--mono); color: var(--text); }
+.rec-fi   { font-size: .65rem; color: var(--muted); margin-top: 1px; }
+.rec-meta { font-size: .62rem; color: var(--dim); text-align: right; }
+.mini-bar { display: flex; gap: 1px; margin-top: 3px; justify-content: flex-end; }
+.mini-seg { width: 6px; height: 6px; border-radius: 1px; background: var(--border); }
+.mini-seg.on { background: var(--accent); }
+
+/* ── NRS SLIDERS ── */
+.domain-row { margin-bottom: 16px; }
+.domain-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+.domain-lbl { font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+.domain-num { font-size: 1.5rem; font-weight: 300; font-family: var(--mono); color: var(--text); min-width: 28px; text-align: right; }
+.nrs-wrap { position: relative; padding: 2px 0; }
+input[type=range] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 2px; outline: none; cursor: pointer;
+  background: linear-gradient(to right, var(--accent) 0%, var(--accent) var(--pct,0%), var(--border) var(--pct,0%), var(--border) 100%);
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent); border: 2px solid var(--surface); box-shadow: 0 0 0 2px var(--accent-glow); cursor: pointer;
+}
+.nrs-labs { display: flex; justify-content: space-between; font-size: .56rem; color: var(--dim); margin-top: 4px; }
+
+/* ── FLARE INDEX ── */
+.fi-display {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 12px 16px; margin-top: 4px;
+}
+.fi-label { font-size: .6rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+.fi-val   { font-size: 2rem; font-weight: 300; font-family: var(--mono); color: var(--text); }
+.fi-risk  { font-size: .7rem; font-weight: 600; letter-spacing: .06em; }
+
+/* ── FORM ELEMENTS ── */
+.flabel {
+  font-size: .6rem; color: var(--muted); text-transform: uppercase; letter-spacing: .1em;
+  margin-bottom: 5px; display: block;
+}
+.flabel em { text-transform: none; letter-spacing: 0; font-style: italic; color: var(--dim); margin-left: 5px; font-size: .58rem; }
+.fi-input {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r);
+  color: var(--text); padding: 8px 12px; font-size: .75rem; font-family: var(--mono);
+  transition: border-color var(--t); outline: none;
+}
+.fi-input:focus { border-color: var(--accent); }
+.fi-input::placeholder { color: var(--dim); }
+
+/* ── BUTTONS ── */
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  border-radius: 6px; padding: 9px 18px;
+  font-size: .72rem; font-weight: 400; cursor: pointer; font-family: var(--mono);
+  width: 100%; transition: var(--t); letter-spacing: .06em; border: 1px solid;
+}
+.btn:active { opacity: .8; }
+.btn-p { background: var(--accent-glow); border-color: var(--accent); color: var(--accent); }
+.btn-p:hover { background: rgba(126,110,154,.22); }
+.btn-s { background: var(--surface2); border-color: var(--border); color: var(--muted); }
+.btn-s:hover { border-color: var(--muted); color: var(--text); }
+.btn-d { background: var(--high-glow); border-color: rgba(160,80,96,.4); color: var(--high); }
+.btn-sm { padding: 5px 11px; font-size: .65rem; width: auto; border-radius: 4px; }
+
+/* ── STATS GRID ── */
+.sgg { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+.sg  { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r); padding: 10px 8px; text-align: center; }
+.sg-val { font-size: 1.4rem; font-weight: 300; font-family: var(--mono); color: var(--text); }
+.sg-lbl { font-size: .56rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-top: 2px; }
+
+/* ── CORRELATION BARS ── */
+.corr-group-lbl { font-size: .58rem; text-transform: uppercase; letter-spacing: .12em; color: var(--dim); margin: 14px 0 6px; display: flex; align-items: center; gap: 6px; }
+.corr-group-lbl::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.corr-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.corr-name { font-size: .62rem; color: var(--muted); width: 120px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.corr-axis { flex: 1; position: relative; height: 14px; }
+.corr-zero { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--border2); }
+.corr-fill {
+  position: absolute; top: 2px; bottom: 2px; border-radius: 2px;
+  transition: width .5s ease, left .5s ease;
+}
+.corr-fill.neg { right: 50%; background: var(--high); }
+.corr-fill.pos { left: 50%; background: var(--low); }
+.corr-fill.ins { left: 50%; right: 50%; background: var(--dim); opacity: .5; }
+.corr-r { font-size: .6rem; font-family: var(--mono); color: var(--dim); width: 38px; text-align: right; flex-shrink: 0; }
+.ev { font-size: .7rem; }
+.ev-g { color: var(--low); }
+.ev-y { color: var(--mod); }
+.ev-b { color: var(--accent); }
+
+/* ── FORECAST HOURLY GRID ── */
+.fc-grid { display: flex; flex-direction: column; gap: 4px; }
+.fc-cell {
+  display: grid; grid-template-columns: 52px 1fr 60px 50px;
+  align-items: center; gap: 6px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 7px 10px; font-size: .65rem; font-family: var(--mono);
+}
+.fc-cell.r-low  { border-left: 2px solid var(--low); }
+.fc-cell.r-mod  { border-left: 2px solid var(--mod); }
+.fc-cell.r-high { border-left: 2px solid var(--high); background: var(--high-glow); }
+.fc-time  { color: var(--muted); }
+.fc-pres  { color: var(--text); }
+.fc-delta { text-align: center; }
+.fc-prob  { text-align: right; font-weight: 600; }
+.fc-prob.low  { color: var(--low); }
+.fc-prob.mod  { color: var(--mod); }
+.fc-prob.high { color: var(--high); }
+
+/* ── CHART WRAPPER ── */
+.ch-wrap { position: relative; }
+
+/* ── REPORT ELEMENTS ── */
+.rsection { margin-bottom: 16px; }
+.rrow { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: .7rem; }
+.rk { color: var(--muted); }
+.rv { color: var(--text); font-weight: 400; }
+.rep-form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+
+/* ── EMPTY STATE ── */
+.empty { padding: 28px 20px; text-align: center; }
+.empty-icon { font-size: 2rem; margin-bottom: 10px; opacity: .5; }
+.empty p { font-size: .72rem; color: var(--muted); line-height: 1.6; }
+
+/* ── PROGRESS BAR ── */
+.prog-bar { background: var(--border); border-radius: 3px; height: 6px; margin: 8px 0; overflow: hidden; }
+.prog-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .4s ease; }
+
+/* ── MODAL ── */
+.mo {
+  position: fixed; inset: 0; z-index: 100; background: rgba(46,40,32,.55);
+  display: none; align-items: flex-end; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.mo.on { display: flex; }
+.ms {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r2) var(--r2) 0 0;
+  width: 100%; max-width: 500px; padding: 20px 20px calc(20px + env(safe-area-inset-bottom,0));
+  max-height: 85vh; overflow-y: auto;
+}
+.mhandle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 16px; }
+.mtitle { font-family: var(--serif); font-style: italic; font-weight: 300; font-size: 1.05rem; color: var(--accent); margin-bottom: 12px; }
+
+/* ── ONBOARDING ── */
+#onb {
+  position: fixed; inset: 0; z-index: 200; background: var(--bg);
+  background-image: radial-gradient(ellipse at 30% 0%, rgba(126,110,154,.15) 0%, transparent 60%),
+                    radial-gradient(ellipse at 70% 100%, rgba(90,138,106,.08) 0%, transparent 50%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 24px 20px;
+}
+.onb-inner { width: 100%; max-width: 400px; display: flex; flex-direction: column; flex: 1; justify-content: center; }
+.onb-logo  { text-align: center; margin-bottom: 28px; }
+.onb-logo-icon { font-size: 3rem; display: block; margin-bottom: 8px; }
+.onb-logo-text { font-family: var(--serif); font-style: italic; font-weight: 300; font-size: 1.5rem; color: var(--accent); }
+.onb-logo-sub  { font-size: .65rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; margin-top: 4px; }
+.onb-step  { display: none; }
+.onb-step.on { display: block; animation: fadeUp .25s ease; }
+.onb-title { font-family: var(--serif); font-style: italic; font-weight: 300; font-size: 1.1rem; color: var(--text); margin-bottom: 6px; }
+.onb-sub   { font-size: .7rem; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
+.onb-foot  { margin-top: 24px; display: flex; flex-direction: column; gap: 12px; }
+.prog      { display: flex; gap: 6px; justify-content: center; margin-bottom: 6px; }
+.pdot { width: 24px; height: 3px; border-radius: 2px; background: var(--border2); transition: background .3s; }
+.pdot.cur { background: var(--accent); }
+
+/* ── UTILS ── */
+.hidden    { display: none !important; }
+.flex      { display: flex; }
+.ia        { align-items: center; }
+.g2        { gap: 8px; }
+.g3        { gap: 12px; }
+.f1        { flex: 1; }
+.mt1       { margin-top: 4px; }
+.mt2       { margin-top: 8px; }
+.mt3       { margin-top: 12px; }
+.mb2       { margin-bottom: 8px; }
+.mb3       { margin-bottom: 12px; }
+.xs        { font-size: .65rem; }
+.sm        { font-size: .72rem; }
+.dim       { color: var(--dim); }
+.muted     { color: var(--muted); }
+.mono      { font-family: var(--mono); }
+.bold      { font-weight: 600; }
+.teal      { color: var(--teal); }
+.lav       { color: var(--lavender); }
+
+/* ── DISCLAIMER ── */
+#disclaimer-mo {
+  position: fixed; inset: 0; z-index: 300; background: rgba(46,40,32,.7);
+  display: none; align-items: center; justify-content: center; padding: 20px;
+  backdrop-filter: blur(6px);
+}
+#disclaimer-mo.on { display: flex; }
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ══════════════════════════════════════════
+     ONBOARDING
+════════════════════════════════════════════ -->
+<div id="onb">
+  <div class="onb-inner">
+    <div class="onb-logo">
+      <span class="onb-logo-icon">🌿</span>
+      <div class="onb-logo-text">ФиброПогода</div>
+      <div class="onb-logo-sub" id="onb-tag">Персональный дневник фибромиалгии</div>
+    </div>
+
+    <!-- Step 1: Name + Language -->
+    <div class="onb-step on" id="onb-s1">
+      <div class="onb-title" id="onb-t1">Как вас зовут?</div>
+      <div class="onb-sub" id="onb-d1">Имя используется только в отчёте для врача. Никакие данные не покидают ваше устройство.</div>
+      <div style="margin-bottom:16px">
+        <label class="flabel" id="onb-lname">Имя</label>
+        <input type="text" id="onb-name" class="fi-input" placeholder="Например: Мария" autocomplete="given-name">
+      </div>
+      <div>
+        <label class="flabel" id="onb-llang">Язык интерфейса</label>
+        <div style="display:flex;gap:6px;margin-top:4px">
+          <button class="btn btn-p btn-sm" id="onb-ru" onclick="setOnbLang('ru')" style="flex:1;width:auto">RU</button>
+          <button class="btn btn-s btn-sm" id="onb-he" onclick="setOnbLang('he')" style="flex:1;width:auto">HE</button>
+          <button class="btn btn-s btn-sm" id="onb-en" onclick="setOnbLang('en')" style="flex:1;width:auto">EN</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Geolocation -->
+    <div class="onb-step" id="onb-s2">
+      <div class="onb-title" id="onb-t2">Ваше местоположение</div>
+      <div class="onb-sub" id="onb-d2">Нужно для получения данных о давлении и погоде. Координаты хранятся только на устройстве.</div>
+
+      <!-- Status banner -->
+      <div id="onb-loc-status" class="abanner ab-info mb3" style="display:flex">
+        <span class="ab-icon">📍</span>
+        <div class="ab">
+          <strong id="l-loc-need">Нужна геолокация</strong>
+          <p id="l-loc-sub">Для точных местных данных о давлении и погоде</p>
+        </div>
+      </div>
+
+      <!-- GPS button -->
+      <button class="btn btn-p mb2" onclick="reqLoc(true)" id="onb-geo-btn">
+        📍 <span id="onb-geo-lbl">Определить по GPS</span>
+      </button>
+
+      <!-- Status text (accuracy, errors) -->
+      <div id="geo-det-status" class="xs dim mb2 hidden" style="text-align:center;padding:4px 0"></div>
+
+      <div class="xs dim mb2" style="text-align:center" id="onb-or">или введите город</div>
+
+      <!-- City search autocomplete -->
+      <div style="position:relative;margin-bottom:10px">
+        <input type="text" id="city-onb-input" class="fi-input" 
+          placeholder="🔍 Тель-Авив, Иерусалим, Москва..."
+          oninput="onCityOnbInput(this.value)" autocomplete="off" style="font-size:.8rem">
+        <div id="city-onb-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--accent);border-top:none;border-radius:0 0 var(--r) var(--r);z-index:100;max-height:200px;overflow-y:auto"></div>
+      </div>
+
+      <div class="card mt3" style="text-align:left;padding:14px">
+        <div class="xs dim mb2" id="onb-steps-t">Первые шаги:</div>
+        <div class="flex ia g2 mb2"><span>1️⃣</span><span class="sm" id="onb-st1">Заполняйте дневник раз в день — в любое время</span></div>
+        <div class="flex ia g2 mb2"><span>2️⃣</span><span class="sm" id="onb-st2">Погода собирается автоматически при каждой записи</span></div>
+        <div class="flex ia g2"><span>3️⃣</span><span class="sm" id="onb-st3">Через 20 записей активируется персональный прогноз</span></div>
+      </div>
+    </div>
+
+    <div class="onb-foot">
+      <div class="prog">
+        <div class="pdot cur" id="pd1"></div>
+        <div class="pdot" id="pd2"></div>
+      </div>
+      <div class="flex g2">
+        <button class="btn btn-s hidden" id="onb-back" onclick="onbBack()" style="width:auto;padding:12px 18px"><span id="l-back">Назад</span></button>
+        <button class="btn btn-p" id="onb-next" onclick="onbNext()"><span id="l-next">Далее →</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MAIN APP
+════════════════════════════════════════════ -->
+<div id="main" class="hidden" style="flex-direction:column;height:100dvh">
+
+  <!-- Header -->
+  <div id="hdr">
+    <div id="hdr-title">🌿 Фибро<em>Погода</em>
+      <span id="hdr-city" style="font-family:var(--mono);font-style:normal;font-size:.63rem;color:var(--muted);font-weight:300;margin-left:6px"></span>
+    </div>
+    <div id="hdr-right">
+      <div id="weather-pill" onclick="openWeatherDetail()">
+        <span id="hdr-temp">—°</span>
+        <span id="hdr-pm">Kp—</span>
+      </div>
+      <button onclick="openCityModal()" title="Изменить город" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:4px 8px;font-size:.75rem;cursor:pointer;transition:var(--t)" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">📍</button>
+      <div style="display:flex;gap:2px">
+        <button onclick="setLang('ru')" id="lp-ru" class="lp-btn lp-act">RU</button>
+        <button onclick="setLang('he')" id="lp-he" class="lp-btn">HE</button>
+        <button onclick="setLang('en')" id="lp-en" class="lp-btn">EN</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="scroll">
+
+    <!-- ── TAB: HOME ───────────────────────── -->
+    <div id="t-home" class="tab on">
+
+      <!-- Alert zone -->
+      <div id="alerts-z"></div>
+
+      <!-- Hamsin banner (conditional) -->
+      <div id="hamsin-z"></div>
+
+      <!-- Hero card: Pressure + Delta -->
+      <div class="card">
+        <div class="c-hdr">
+          <span class="c-title" id="l-pressure">Атмосферное давление</span>
+          <span class="xs dim" id="home-city-badge"></span>
+        </div>
+        <div class="hero-grid">
+          <div>
+            <div class="pres-big">
+              <span class="pres-val" id="pres-val">—</span>
+              <span class="pres-unit">мм рт.ст.</span>
+            </div>
+            <div class="pres-label" id="l-pres-alt">высота — м</div>
+          </div>
+          <div class="delta-block">
+            <span class="delta-val delta-flat" id="delta-val">—</span>
+            <span class="delta-lbl" id="l-delta">Δ 12ч</span>
+          </div>
+        </div>
+
+        <!-- Risk badge -->
+        <div id="risk-badge" class="spill sp-low">
+          <span class="risk-dot"></span>
+          <span id="risk-text">LOW — низкий риск обострения</span>
+        </div>
+        <div class="xs muted mt2" id="risk-sub">На основе общих порогов · добавьте 20 записей для персонального</div>
+
+        <!-- 48h forecast mini -->
+        <div class="fc-wrap" id="fc-mini">
+          <div class="c-hdr" style="margin-bottom:6px">
+            <span class="c-title" id="l-fc48">Прогноз вероятности флэра — 48ч</span>
+            <button class="btn btn-s btn-sm" onclick="goTab('forecast')" id="l-fc-detail">Подробнее →</button>
+          </div>
+          <div class="fc-bars" id="fc-bars-mini">
+            <!-- bars rendered by JS -->
+          </div>
+          <div class="fc-threshold" id="l-fc-threshold">порог риска</div>
+          <div class="fc-times" id="fc-times-mini">
+            <span>сейчас</span><span>+12ч</span><span>+24ч</span><span>+36ч</span><span>+48ч</span>
+          </div>
+          <div id="fc-alert-z" class="mt2"></div>
+        </div>
+      </div>
+
+      <!-- Weather cards 2x2 -->
+      <div class="wg" id="weather-mini">
+        <div class="wc">
+          <span class="wc-icon">💧</span>
+          <span class="wc-val" id="wc-hum">—</span>
+          <span class="wc-lbl" id="l-humidity">Влажность %</span>
+        </div>
+        <div class="wc">
+          <span class="wc-icon">🌡️</span>
+          <span class="wc-val" id="wc-temp">—</span>
+          <span class="wc-lbl" id="l-temp">Температура °C</span>
+        </div>
+        <div class="wc">
+          <span class="wc-icon">🌌</span>
+          <span class="wc-val" id="wc-kp">—</span>
+          <span class="wc-lbl" id="l-kp">Kp-индекс</span>
+        </div>
+        <div class="wc">
+          <span class="wc-icon" id="moon-icon">🌙</span>
+          <span class="wc-val" id="wc-moon">—</span>
+          <span class="wc-lbl" id="l-moon">Фаза луны</span>
+        </div>
+      </div>
+
+      <!-- Recent entries -->
+      <div id="recent-z" class="hidden">
+        <div class="s-hdr"><div class="s-title" id="l-recent">Последние записи</div><div class="s-line"></div></div>
+        <div id="recent-list"></div>
+        <button class="btn btn-s btn-sm mt2" onclick="goTab('analytics')" style="width:auto"><span id="l-see-all">Все записи →</span></button>
+      </div>
+
+      <div id="no-entries" class="empty">
+        <div class="empty-icon">📝</div>
+        <p id="l-no-entries">Нет записей.<br>Добавьте первую оценку симптомов.</p>
+        <button class="btn btn-p btn-sm mt3" onclick="goTab('entry')" style="width:auto">+ <span id="l-add-first">Добавить запись</span></button>
+      </div>
+
+    </div><!-- /t-home -->
+
+    <!-- ── TAB: ENTRY ──────────────────────── -->
+    <div id="t-entry" class="tab">
+      <div class="card">
+        <div class="c-hdr">
+          <span class="c-title" id="l-entry-title">Дневник симптомов</span>
+          <span class="xs dim" id="entry-time">—</span>
+        </div>
+
+        <!-- Backdate toggle -->
+        <div style="display:flex;gap:6px;margin-bottom:14px">
+          <button id="btn-now" class="btn btn-p btn-sm" onclick="setEntryMode('now')" style="flex:1;width:auto">🕐 <span id="l-now">Сейчас</span></button>
+          <button id="btn-back" class="btn btn-s btn-sm" onclick="setEntryMode('back')" style="flex:1;width:auto">📅 <span id="l-backdate">Задним числом</span></button>
+        </div>
+        <div id="backdate-row" class="hidden mb3" style="gap:6px;align-items:flex-end">
+          <div style="width:60px"><label class="flabel" id="l-bd-day">День</label><select id="back-day" class="fi-input" style="font-size:.8rem;padding:7px 6px"></select></div>
+          <div style="width:96px"><label class="flabel" id="l-bd-mon">Месяц</label><select id="back-month" class="fi-input" style="font-size:.8rem;padding:7px 6px"></select></div>
+          <div style="width:76px"><label class="flabel" id="l-bd-yr">Год</label><select id="back-year" class="fi-input" style="font-size:.8rem;padding:7px 6px"></select></div>
+          <div style="width:72px"><label class="flabel" id="l-bd-hr">Час</label><select id="back-hour" class="fi-input" style="font-size:.8rem;padding:7px 6px"></select></div>
+        </div>
+
+        <!-- 8 FIQR domain sliders -->
+        <div id="domains-wrap">
+
+          <div class="domain-row">
+            <div class="domain-hdr">
+              <span class="domain-lbl" id="d-pain">😣 Боль</span>
+              <span class="domain-num" id="v-pain">0</span>
+            </div>
+            <div class="nrs-wrap">
+              <input type="range" id="r-pain" min="0" max="10" value="0" oninput="updDomain(this,'pain')">
+              <div class="nrs-labs"><span>0</span><span>5</span><span>10</span></div>
+            </div>
+          </div>
+
+          <div class="domain-row">
+            <div class="domain-hdr">
+              <span class="domain-lbl" id="d-fatigue">😴 Усталость</span>
+              <span class="domain-num" id="v-fatigue">0</span>
+            </div>
+            <div class="nrs-wrap">
+              <input type="range" id="r-fatigue" min="0" max="10" value="0" oninput="updDomain(this,'fatigue')">
+              <div class="nrs-labs"><span>0</span><span>5</span><span>10</span></div>
+            </div>
+          </div>
+
+          <div class="domain-row">
+            <div class="domain-hdr">
+              <span class="domain-lbl" id="d-stiffness">🧊 Скованность</span>
+              <span class="domain-num" id="v-stiffness">0</span>
+            </div>
+            <div class="nrs-wrap">
+              <input type="range" id="r-stiffness" min="0" max="10" value="0" oninput="updDomain(this,'stiffness')">
+              <div class="nrs-labs"><span>0</span><span>5</span><span>10</span></div>
+            </div>
+          </div>
+
+          <div class="domain-row">
+            <div class="domain-hdr">
+              <span class="domain-lbl" id="d-sleep">🌙 Качество сна</span>
+              <span class="domain-num" id="v-sleep">0</span>
+            </div>
+            <div class="nrs-wrap">
+              <input type="range" id="r-sleep" min="0" max="10" value="0" oninput="updDomain(this,'sleep')">
+              <div class="nrs-labs"><span>0</span><span>5</span><span>10</span></div>
+            </div>
+          </div>
+
+          <div class="domain-row">
+            <div class="domain-hdr">
+              <span class="domain-lbl" id="d-fog">🌫️ Туман (когнитив.)</span>
+              <span class="domain-num" id="v-fog">0</span>
+            </div>
+            <div class="nrs-wrap">
+              <input type="range" id="r-fog" min="0" max="10" value="0" oninput="updDomain(this,'fog')">
+              <div class="nrs-labs"><span>0</span><span>5</span><span>10</span></div>
+            </div>
+          </div>
+
+          <div class="domain-row">
+            <div class="domain-hdr">
+              <span class="domain-lbl" id="d-mood">💭 Настроение</span>
+              <span class="domain-num" id="v-mood">0</span>
+            </div>
+            <div class="nrs-wrap">
+              <input type="range" id="r-mood" min="0" max="10" value="0" oninput="updDomain(this,'mood')">
+              <div class="nrs-labs"><span>0</span><span>5</span><span>10</span></div>
+            </div>
+          </div>
+
+          <div class="domain-row">
+            <div class="domain-hdr">
+              <span class="domain-lbl" id="d-tender">👆 Болезненность</span>
+              <span class="domain-num" id="v-tender">0</span>
+            </div>
+            <div class="nrs-wrap">
+              <input type="range" id="r-tender" min="0" max="10" value="0" oninput="updDomain(this,'tender')">
+              <div class="nrs-labs"><span>0</span><span>5</span><span>10</span></div>
+            </div>
+          </div>
+
+          <div class="domain-row">
+            <div class="domain-hdr">
+              <span class="domain-lbl" id="d-sensitivity">🔆 Сенсорная чувствит.</span>
+              <span class="domain-num" id="v-sensitivity">0</span>
+            </div>
+            <div class="nrs-wrap">
+              <input type="range" id="r-sensitivity" min="0" max="10" value="0" oninput="updDomain(this,'sensitivity')">
+              <div class="nrs-labs"><span>0</span><span>5</span><span>10</span></div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Flare Index display -->
+        <div class="fi-display" id="fi-display">
+          <div>
+            <div class="fi-label" id="l-fi">Флэр-индекс</div>
+            <div class="xs muted mt1" id="l-fi-sub">взвешенная сумма 8 доменов</div>
+          </div>
+          <div style="text-align:right">
+            <div class="fi-val" id="fi-val">0.0</div>
+            <div class="fi-risk sp-low" id="fi-risk" style="font-size:.65rem;letter-spacing:.05em;color:var(--low)">LOW</div>
+          </div>
+        </div>
+
+        <!-- Note -->
+        <div style="margin:14px 0 12px">
+          <label class="flabel" for="entry-note"><span id="l-note">Заметка</span> <em id="l-opt">опционально</em></label>
+          <input type="text" id="entry-note" class="fi-input" placeholder="Что-то необычное сегодня...">
+        </div>
+
+        <button class="btn btn-p" onclick="saveEntry()">💾 <span id="l-save">Сохранить запись</span></button>
+      </div>
+    </div><!-- /t-entry -->
+
+    <!-- ── TAB: FORECAST ───────────────────── -->
+    <div id="t-forecast" class="tab">
+
+      <!-- Lag insight banner -->
+      <div id="lag-banner" class="abanner ab-info hidden">
+        <span class="ab-icon">⏱️</span>
+        <div class="ab">
+          <strong id="lag-title">Персональный паттерн</strong>
+          <p id="lag-text">Ваша боль нарастает ~12ч после падения давления</p>
+        </div>
+      </div>
+
+      <!-- Pressure + Pain chart -->
+      <div class="card">
+        <div class="c-hdr">
+          <span class="c-title" id="l-chart-title">Давление и боль — 48ч</span>
+          <span class="xs dim" id="l-chart-sub">история + прогноз</span>
+        </div>
+        <div class="ch-wrap" style="height:180px"><canvas id="main-chart"></canvas></div>
+        <div class="flex ia g3 mt2" style="font-size:.6rem;color:var(--muted)">
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:2px;background:var(--accent);display:inline-block;border-radius:1px"></span><span id="l-leg-pres">Давление</span></span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;background:var(--high);border-radius:50%;display:inline-block"></span><span id="l-leg-pain">Боль (из дневника)</span></span>
+        </div>
+      </div>
+
+      <!-- Hourly forecast grid -->
+      <div class="card">
+        <div class="c-hdr">
+          <span class="c-title" id="l-hourly">Почасовой прогноз</span>
+          <span class="xs dim" style="font-size:.58rem">мм рт.ст. · Δ · вероят.%</span>
+        </div>
+        <div class="fc-grid" id="fc-grid">
+          <!-- populated by JS — placeholder rows -->
+          <div class="fc-cell r-low">
+            <span class="fc-time">Сейчас</span>
+            <span class="fc-pres">760</span>
+            <span class="fc-delta dim">—</span>
+            <span class="fc-prob low">12%</span>
+          </div>
+          <div class="fc-cell r-mod">
+            <span class="fc-time">+6ч</span>
+            <span class="fc-pres">756</span>
+            <span class="fc-delta" style="color:var(--accent)">↓4</span>
+            <span class="fc-prob mod">38%</span>
+          </div>
+          <div class="fc-cell r-high">
+            <span class="fc-time">+12ч</span>
+            <span class="fc-pres">751</span>
+            <span class="fc-delta" style="color:var(--high)">↓9</span>
+            <span class="fc-prob high">71%</span>
+          </div>
+          <div class="xs dim mt2" id="l-fc-note">* До 20 записей прогноз основан на общих порогах фибромиалгии</div>
+        </div>
+      </div>
+
+    </div><!-- /t-forecast -->
+
+    <!-- ── TAB: ANALYTICS ─────────────────── -->
+    <div id="t-analytics" class="tab">
+
+      <!-- Stats grid -->
+      <div class="card">
+        <div class="c-title mb3" id="l-my-stats">Моя статистика</div>
+        <div class="sgg">
+          <div class="sg"><div class="sg-val" id="st-pain">—</div><div class="sg-lbl" id="l-st-pain">Ср. боль</div></div>
+          <div class="sg"><div class="sg-val" id="st-fi">—</div><div class="sg-lbl" id="l-st-fi">Ср. FI</div></div>
+          <div class="sg"><div class="sg-val" id="st-cnt">—</div><div class="sg-lbl" id="l-st-cnt">Записей</div></div>
+          <div class="sg"><div class="sg-val" id="st-days">—</div><div class="sg-lbl" id="l-st-days">Дней</div></div>
+          <div class="sg"><div class="sg-val" id="st-high">—</div><div class="sg-lbl" id="l-st-high">HIGH %</div></div>
+          <div class="sg"><div class="sg-val" id="st-low">—</div><div class="sg-lbl" id="l-st-low">LOW %</div></div>
+        </div>
+      </div>
+
+      <!-- Sensitivity profile -->
+      <div class="card">
+        <div class="c-hdr">
+          <span class="c-title" id="l-profile">Мой профиль чувствительности</span>
+          <button class="btn btn-s btn-sm" onclick="recomputeProfile()" id="l-recalc">Пересчитать</button>
+        </div>
+
+        <!-- Progress counter (< 20 entries) -->
+        <div id="profile-progress">
+          <div class="xs muted mb2" id="l-progress-hint">Профиль активируется после 20 записей</div>
+          <div class="flex ia g2 mb2">
+            <span class="xs dim" id="prog-count">0 / 20</span>
+            <div class="prog-bar f1"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+          </div>
+          <div class="xs dim" id="l-progress-sub">Продолжайте вести дневник — алгоритм учится вашим паттернам</div>
+        </div>
+
+        <!-- Correlation bars (≥ 20 entries) -->
+        <div id="profile-bars" class="hidden">
+          <div id="profile-insight" class="abanner ab-info mb3 hidden">
+            <span class="ab-icon">💡</span>
+            <div class="ab">
+              <strong id="insight-title">Ваш главный триггер</strong>
+              <p id="insight-text">—</p>
+            </div>
+          </div>
+
+          <!-- Group: Proven -->
+          <div class="corr-group-lbl"><span class="ev ev-g">★</span> <span id="l-g-proven">Доказанные триггеры</span></div>
+          <div id="corr-proven"></div>
+
+          <!-- Group: Ambiguous -->
+          <div class="corr-group-lbl"><span class="ev ev-y">◆</span> <span id="l-g-ambi">Неоднозначные</span></div>
+          <div id="corr-ambi"></div>
+
+          <!-- Group: Experimental -->
+          <div class="corr-group-lbl"><span class="ev ev-b">○</span> <span id="l-g-exp">Экспериментальные</span></div>
+          <div id="corr-exp"></div>
+
+          <div class="xs dim mt3" id="l-corr-legend">
+            <span class="ev ev-g">★</span> сильная доказательность &nbsp;
+            <span class="ev ev-y">◆</span> умеренная &nbsp;
+            <span class="ev ev-b">○</span> экспериментальная<br>
+            <span style="color:var(--high)">■</span> триггер боли &nbsp;
+            <span style="color:var(--low)">■</span> облегчение &nbsp;
+            <span style="color:var(--dim)">■</span> незначимо
+          </div>
+        </div>
+      </div>
+
+      <!-- All records -->
+      <div class="card">
+        <div class="c-hdr">
+          <span class="c-title" id="l-all-rec">Все записи</span>
+          <button class="btn btn-d btn-sm" onclick="confirmClear()" id="l-clear" style="width:auto">Очистить</button>
+        </div>
+        <div id="all-list">
+          <div class="empty"><p class="sm dim" id="l-no-rec">Нет записей</p></div>
+        </div>
+      </div>
+
+    </div><!-- /t-analytics -->
+
+    <!-- ── TAB: REPORT ─────────────────────── -->
+    <div id="t-report" class="tab">
+      <div class="card">
+        <div class="c-title mb1" id="l-rep-title">Отчёт для врача</div>
+        <div class="xs dim mb3"><span id="l-rep-sub">Ревматолог / рефлексотерапевт ·</span> <span id="rep-date">—</span></div>
+
+        <div class="rep-form">
+          <div>
+            <label class="flabel" id="l-rep-patient">Пациент</label>
+            <input type="text" id="rep-patient" class="fi-input" placeholder="Имя пациента">
+          </div>
+          <div>
+            <label class="flabel" id="l-rep-doctor">Врач <em id="l-rep-opt">опционально</em></label>
+            <input type="text" id="rep-doctor" class="fi-input" placeholder="Имя врача">
+          </div>
+          <div>
+            <label class="flabel" id="l-rep-meds">Лекарства <em>опционально</em></label>
+            <input type="text" id="rep-meds" class="fi-input" placeholder="Лирика, Амитриптилин...">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div>
+              <label class="flabel" id="l-rep-from">С</label>
+              <input type="date" id="rep-from" class="fi-input" style="font-size:.75rem">
+            </div>
+            <div>
+              <label class="flabel" id="l-rep-to">По</label>
+              <input type="date" id="rep-to" class="fi-input" style="font-size:.75rem">
+            </div>
+          </div>
+        </div>
+
+        <div id="rep-body">
+          <div class="empty"><div class="empty-icon">📋</div><p class="sm" id="l-rep-empty">Нужно минимум 7 дней наблюдений</p></div>
+        </div>
+
+        <div id="rep-actions" class="hidden flex g2 mt3">
+          <button class="btn btn-p" onclick="genReport()">📄 <span id="l-gen-rep">Открыть отчёт</span></button>
+          <button class="btn btn-s" onclick="shareRep()">📤 <span id="l-share">Поделиться</span></button>
+        </div>
+      </div>
+    </div><!-- /t-report -->
+
+  </div><!-- /scroll -->
+
+  <!-- Bottom nav -->
+  <nav id="nav">
+    <button class="nb on" id="nb-home" onclick="goTab('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12L12 3l9 9"/><path d="M9 21V12h6v9"/></svg>
+      <span id="l-nb-home">Главная</span>
+    </button>
+    <button class="nb" id="nb-entry" onclick="goTab('entry')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      <span id="l-nb-entry">Дневник</span>
+    </button>
+    <button class="nb" id="nb-forecast" onclick="goTab('forecast')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span id="l-nb-fc">Прогноз</span>
+    </button>
+    <button class="nb" id="nb-analytics" onclick="goTab('analytics')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span id="l-nb-an">Анализ</span>
+    </button>
+    <button class="nb" id="nb-report" onclick="goTab('report')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      <span id="l-nb-rep">Отчёт</span>
+    </button>
+  </nav>
+
+</div><!-- /main -->
+
+<!-- ══════════════════════════════════════════
+     MODALS
+════════════════════════════════════════════ -->
+
+<!-- Geo confirmation -->
+<div class="mo" id="geoModal" style="align-items:center;padding:20px">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);width:100%;max-width:400px;padding:24px 20px;box-shadow:0 8px 32px rgba(46,40,32,.15)">
+    <div class="mtitle" id="l-geo-confirm">Ваше местоположение</div>
+    <div id="modal-loc-name" style="font-size:1rem;font-weight:600;color:var(--accent);margin:10px 0;padding:10px 14px;background:var(--accent-glow);border-radius:var(--r);border:1px solid var(--border)">—</div>
+    <div id="modal-loc-sub" class="xs dim mb3" style="line-height:1.6"></div>
+    <div class="flex g2">
+      <button class="btn btn-p" onclick="confirmGeo()" style="flex:2">✓ <span id="l-yes-correct">Да, верно</span></button>
+      <button class="btn btn-s" onclick="retryGeo()" style="flex:1"><span id="l-retry">Повторить</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- City change -->
+<div class="mo" id="cityModal" style="align-items:center;padding:20px">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);width:100%;max-width:400px;padding:24px 20px;box-shadow:0 8px 32px rgba(46,40,32,.15)">
+    <div class="mtitle">📍 <span id="l-change-city">Изменить город</span></div>
+    <div style="position:relative;margin:14px 0 10px">
+      <input type="text" id="city-modal-input" class="fi-input" placeholder="🔍 Введите город..." oninput="onCityModalInput(this.value)" autocomplete="off" style="font-size:.8rem">
+      <div id="city-modal-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--accent);border-top:none;border-radius:0 0 var(--r) var(--r);z-index:100;max-height:200px;overflow-y:auto"></div>
+    </div>
+    <div class="xs dim mb3" id="l-city-or">или</div>
+    <button class="btn btn-s mb2" onclick="reqLoc(false)" style="font-size:.72rem">📍 <span id="l-gps-detect">Определить по GPS</span></button>
+    <div id="city-modal-status" class="xs dim mt2"></div>
+    <button class="btn btn-s mt3" onclick="closeMo('cityModal')" id="l-cancel">Отмена</button>
+  </div>
+</div>
+
+<!-- Weather detail -->
+<div class="mo" id="wmo">
+  <div class="ms">
+    <div class="mhandle"></div>
+    <div class="mtitle" id="l-wdet">Погодные данные</div>
+    <div id="wdet-body"></div>
+    <button class="btn btn-s mt3" onclick="closeMo('wmo')" id="l-close">Закрыть</button>
+  </div>
+</div>
+
+<!-- Disclaimer -->
+<div id="disclaimer-mo">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);width:100%;max-width:440px;padding:24px 20px;box-shadow:0 8px 40px rgba(0,0,0,.35);max-height:90vh;overflow-y:auto">
+    <div style="font-size:1.5rem;text-align:center;margin-bottom:10px">🌿</div>
+    <div style="font-size:.85rem;font-weight:600;color:var(--text);text-align:center;margin-bottom:16px" id="disc-title">Медицинский дисклеймер · הצהרת אחריות</div>
+    <div style="font-size:.72rem;color:var(--muted);line-height:1.7" id="disc-body">
+      <div id="disc-ru">
+        <p style="margin-bottom:10px">Это приложение является <strong style="color:var(--text)">персональным инструментом самомониторинга</strong> и не является медицинским устройством, не сертифицировано и не предназначено для постановки диагноза или лечения.</p>
+        <p style="margin-bottom:10px">Данные носят <strong style="color:var(--text)">исключительно информационный характер</strong> и не могут заменить консультацию врача.</p>
+        <p style="margin-bottom:16px;padding:10px;background:var(--surface2);border-radius:var(--r);border:1px solid var(--border)">Продолжая использование, вы подтверждаете, что понимаете и принимаете условия дисклеймера.</p>
+      </div>
+      <div id="disc-he" style="display:none;direction:rtl">
+        <p style="margin-bottom:10px">אפליקציה זו היא <strong style="color:var(--text)">כלי מעקב אישי</strong> ואינה מכשיר רפואי מוסמך.</p>
+        <p style="margin-bottom:10px">הנתונים המוצגים הם <strong style="color:var(--text)">למטרות מידע בלבד</strong> ואינם מחליפים ייעוץ רפואי.</p>
+        <p style="margin-bottom:16px;padding:10px;background:var(--surface2);border-radius:var(--r);border:1px solid var(--border)">בהמשך השימוש, אתה מאשר כי קראת וקיבלת את תנאי הצהרה זו.</p>
+      </div>
+    </div>
+    <button class="btn btn-p mt2" onclick="acceptDisclaimer()" style="width:100%;font-size:.8rem" id="disc-btn">✓ Понимаю и принимаю · הבנתי ומקבל</button>
+    <div style="font-size:.6rem;color:var(--dim);text-align:center;margin-top:8px">ФиброПогода · Только для личного использования</div>
+  </div>
+</div>
+
+</div><!-- /app -->
+<script>
+'use strict';
+// ══════════════════════════════════════════════════════
+//  ФиброПогода v2 — JS Engine (skeleton)
+// ══════════════════════════════════════════════════════
+
+// ── STATE ─────────────────────────────────────────────
+let LANG = 'ru';
+let S = {
+  name: '',
+  location: null,       // {lat, lon, alt, nameRu, nameHe, nameEn, source}
+  entries: [],
+  personalProfile: null,
+  weather: null,
+  forecast: null,
+  lang: null,
+};
+
+// ── I18N (core labels only — full set to be added) ────
+const I18N = {
+  ru: {
+    'onb-tag': 'Персональный дневник фибромиалгии',
+    'onb-t1': 'Как вас зовут?',
+    'onb-d1': 'Имя используется только в отчёте для врача. Никакие данные не покидают ваше устройство.',
+    'onb-t2': 'Ваше местоположение',
+    'onb-d2': 'Нужно для получения данных о давлении и погоде. Координаты хранятся только на устройстве.',
+    'onb-geo-lbl': 'Определить по GPS',
+    'onb-or': 'или',
+    'onb-steps-t': 'Первые шаги:',
+    'onb-st1': 'Заполняйте дневник раз в день — в любое время',
+    'onb-st2': 'Погода собирается автоматически при каждой записи',
+    'onb-st3': 'Через 20 записей активируется персональный прогноз',
+    'l-back': '← Назад',
+    'l-next': 'Далее →',
+    'l-done': 'Начать →',
+    // Home
+    'l-pressure': 'Атмосферное давление',
+    'l-delta': 'Δ 12ч',
+    'l-fc48': 'Прогноз вероятности флэра — 48ч',
+    'l-fc-detail': 'Подробнее →',
+    'l-fc-threshold': 'порог риска',
+    'l-humidity': 'Влажность %',
+    'l-temp': 'Температура °C',
+    'l-kp': 'Kp-индекс',
+    'l-moon': 'Фаза луны',
+    'l-recent': 'Последние записи',
+    'l-see-all': 'Все записи →',
+    'l-no-entries': 'Нет записей.\nДобавьте первую оценку симптомов.',
+    'l-add-first': 'Добавить запись',
+    // Entry
+    'l-entry-title': 'Дневник симптомов',
+    'l-now': 'Сейчас',
+    'l-backdate': 'Задним числом',
+    'd-pain': '😣 Боль',
+    'd-fatigue': '😴 Усталость',
+    'd-stiffness': '🧊 Скованность',
+    'd-sleep': '🌙 Качество сна',
+    'd-fog': '🌫️ Туман (когнитив.)',
+    'd-mood': '💭 Настроение',
+    'd-tender': '👆 Болезненность',
+    'd-sensitivity': '🔆 Сенсорная чувствит.',
+    'l-fi': 'Флэр-индекс',
+    'l-fi-sub': 'взвешенная сумма 8 доменов',
+    'l-note': 'Заметка',
+    'l-opt': 'опционально',
+    'l-save': 'Сохранить запись',
+    // Nav
+    'l-nb-home': 'Главная',
+    'l-nb-entry': 'Дневник',
+    'l-nb-fc': 'Прогноз',
+    'l-nb-an': 'Анализ',
+    'l-nb-rep': 'Отчёт',
+    // Analytics
+    'l-my-stats': 'Моя статистика',
+    'l-st-pain': 'Ср. боль',
+    'l-st-fi': 'Ср. FI',
+    'l-st-cnt': 'Записей',
+    'l-st-days': 'Дней',
+    'l-st-high': 'HIGH %',
+    'l-st-low': 'LOW %',
+    'l-profile': 'Мой профиль чувствительности',
+    'l-recalc': 'Пересчитать',
+    'l-progress-hint': 'Профиль активируется после 20 записей',
+    'l-progress-sub': 'Продолжайте вести дневник — алгоритм учится вашим паттернам',
+    'l-g-proven': 'Доказанные триггеры',
+    'l-g-ambi': 'Неоднозначные',
+    'l-g-exp': 'Экспериментальные',
+    'l-all-rec': 'Все записи',
+    'l-clear': 'Очистить',
+    'l-no-rec': 'Нет записей',
+    // Report
+    'l-rep-title': 'Отчёт для врача',
+    'l-rep-sub': 'Ревматолог / рефлексотерапевт ·',
+    'l-rep-patient': 'Пациент',
+    'l-rep-doctor': 'Врач',
+    'l-rep-opt': 'опционально',
+    'l-rep-meds': 'Лекарства',
+    'l-rep-from': 'С',
+    'l-rep-to': 'По',
+    'l-rep-empty': 'Нужно минимум 7 дней наблюдений',
+    'l-gen-rep': 'Открыть отчёт',
+    'l-share': 'Поделиться',
+  },
+  he: {
+    'onb-tag': 'יומן פיברומיאלגיה אישי',
+    'onb-t1': 'מה שמך?',
+    'onb-d1': 'השם משמש רק בדוח לרופא. אין נתונים שיוצאים מהמכשיר שלך.',
+    'onb-t2': 'המיקום שלך',
+    'onb-d2': 'נדרש לקבלת נתוני לחץ אוויר ומזג אוויר.',
+    'onb-geo-lbl': 'זהה לפי GPS',
+    'l-back': '← חזרה',
+    'l-next': 'הבא →',
+    'l-done': 'התחל →',
+    'l-pressure': 'לחץ אטמוספרי',
+    'l-delta': 'Δ 12ש',
+    'l-humidity': 'לחות %',
+    'l-temp': 'טמפרטורה °C',
+    'l-kp': 'מדד Kp',
+    'l-moon': 'שלב הירח',
+    'l-no-entries': 'אין רשומות.\nהוסף הערכה ראשונה.',
+    'l-add-first': 'הוסף רשומה',
+    'l-entry-title': 'יומן תסמינים',
+    'l-save': 'שמור רשומה',
+    'l-nb-home': 'ראשי',
+    'l-nb-entry': 'יומן',
+    'l-nb-fc': 'תחזית',
+    'l-nb-an': 'ניתוח',
+    'l-nb-rep': 'דוח',
+    'l-rep-title': 'דוח לרופא',
+    'l-my-stats': 'הסטטיסטיקה שלי',
+  },
+  en: {
+    'onb-tag': 'Personal fibromyalgia tracker',
+    'onb-t1': "What's your name?",
+    'onb-d1': 'Your name is only used in the doctor report. No data leaves your device.',
+    'onb-t2': 'Your location',
+    'onb-d2': 'Required to fetch pressure and weather data.',
+    'onb-geo-lbl': 'Detect via GPS',
+    'l-back': '← Back',
+    'l-next': 'Next →',
+    'l-done': 'Start →',
+    'l-pressure': 'Atmospheric pressure',
+    'l-delta': 'Δ 12h',
+    'l-humidity': 'Humidity %',
+    'l-temp': 'Temperature °C',
+    'l-kp': 'Kp index',
+    'l-moon': 'Moon phase',
+    'l-no-entries': 'No entries yet.\nAdd your first symptom assessment.',
+    'l-add-first': 'Add entry',
+    'l-entry-title': 'Symptom diary',
+    'l-save': 'Save entry',
+    'l-nb-home': 'Home',
+    'l-nb-entry': 'Diary',
+    'l-nb-fc': 'Forecast',
+    'l-nb-an': 'Analysis',
+    'l-nb-rep': 'Report',
+    'l-rep-title': 'Doctor Report',
+    'l-my-stats': 'My Statistics',
+  }
+};
+
+function T(k) { return (I18N[LANG] || I18N.ru)[k] || (I18N.ru[k] || k); }
+function tl(ru, he, en) { return LANG === 'he' ? he : LANG === 'en' ? en : ru; }
+function locale() { return LANG === 'he' ? 'he-IL' : LANG === 'en' ? 'en-US' : 'ru-RU'; }
+function locName(loc) {
+  if (!loc) return '';
+  if (LANG === 'he') return loc.nameHe || loc.nameRu || '';
+  if (LANG === 'en') return loc.nameEn || loc.nameRu || '';
+  return loc.nameRu || '';
+}
+
+function applyLang() {
+  document.documentElement.lang = LANG;
+  document.documentElement.dir = LANG === 'he' ? 'rtl' : 'ltr';
+  // update all elements with i18n id
+  Object.keys(I18N[LANG] || {}).forEach(k => {
+    const el = document.getElementById(k);
+    if (el) el.textContent = T(k);
+  });
+  // also update lang buttons
+  ['ru','he','en'].forEach(l => {
+    document.getElementById('lp-' + l)?.classList.toggle('lp-act', l === LANG);
+    document.getElementById('onb-' + l)?.classList.toggle('btn-p', l === LANG);
+    document.getElementById('onb-' + l)?.classList.toggle('btn-s', l !== LANG);
+  });
+  // disclaimer
+  document.getElementById('disc-ru').style.display = LANG !== 'he' ? '' : 'none';
+  document.getElementById('disc-he').style.display = LANG === 'he' ? '' : 'none';
+}
+
+function setLang(l) { LANG = l; save(); applyLang(); }
+function setOnbLang(l) { LANG = l; save(); applyLang(); }
+
+// ── STORAGE ───────────────────────────────────────────
+const KEY = 'fibro-v2';
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} }
+function load() {
+  try {
+    const d = localStorage.getItem(KEY);
+    if (d) { S = { ...S, ...JSON.parse(d) }; }
+    LANG = S.lang || detectLang();
+    S.lang = LANG;
+  } catch(e){}
+}
+function detectLang() {
+  const nav = navigator.language || '';
+  if (nav.startsWith('he')) return 'he';
+  if (nav.startsWith('en')) return 'en';
+  return 'ru';
+}
+
+// ── DISCLAIMER ────────────────────────────────────────
+function checkDisclaimer() { return !!localStorage.getItem('fibro-disc'); }
+function showDisclaimer() { document.getElementById('disclaimer-mo').classList.add('on'); }
+function acceptDisclaimer() { localStorage.setItem('fibro-disc','1'); document.getElementById('disclaimer-mo').classList.remove('on'); }
+
+// ── ONBOARDING ────────────────────────────────────────
+let onbStep = 1;
+
+function onbNext() {
+  if (onbStep === 1) {
+    const name = document.getElementById('onb-name').value.trim();
+    if (!name) { document.getElementById('onb-name').focus(); return; }
+    S.name = name;
+    document.getElementById('rep-patient').value = name;
+    goOnbStep(2);
+  } else if (onbStep === 2) {
+    if (!S.location) { 
+      const msg = tl('Выберите местоположение — введите город или используйте GPS','בחר מיקום','Please select a location');
+      alert(msg); return; 
+    }
+    save();
+    startMain();
+  }
+}
+
+function onbBack() {
+  if (onbStep > 1) goOnbStep(onbStep - 1);
+}
+
+function goOnbStep(n) {
+  document.getElementById('onb-s' + onbStep)?.classList.remove('on');
+  document.getElementById('pd' + onbStep)?.classList.remove('cur');
+  onbStep = n;
+  document.getElementById('onb-s' + n)?.classList.add('on');
+  document.getElementById('pd' + n)?.classList.add('cur');
+  document.getElementById('onb-back').classList.toggle('hidden', n === 1);
+  const nextBtn = document.getElementById('onb-next');
+  const nextSpan = document.getElementById('l-next');
+  if (nextSpan) nextSpan.textContent = n === 2 ? T('l-done') : T('l-next');
+}
+
+// ── GEOLOCATION — полная реализация как в КардиоПогоде ──
+
+let _pendingLoc = null;
+let _citySearchTimer = null;
+let _cityResults = [];
+
+// ── Dual-strategy reverse geocoding ──────────────────
+// Strategy 1: BigDataCloud (CORS:*, keyless)
+// Strategy 2: Nominatim JSONP (bypasses CORS, works everywhere)
+function reverseGeocode(lat, lon, lang) {
+  const bdcUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=${lang}`;
+  const fetchAttempt = fetch(bdcUrl)
+    .then(r => { if (!r.ok) throw new Error('BDC ' + r.status); return r.json(); })
+    .then(d => d.city || d.locality || d.principalSubdivision || '');
+
+  const jsonpAttempt = new Promise((resolve, reject) => {
+    const cb = '_ngeo_' + lang + '_' + Date.now();
+    const timer = setTimeout(() => { delete window[cb]; reject(new Error('JSONP timeout')); }, 10000);
+    window[cb] = d => {
+      clearTimeout(timer); delete window[cb];
+      const a = d.address || {};
+      resolve(a.city || a.town || a.village || a.hamlet || a.county || d.display_name?.split(',')[0] || '');
+    };
+    const s = document.createElement('script');
+    s.src = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=${lang}&zoom=10&json_callback=${cb}`;
+    s.onerror = () => { clearTimeout(timer); delete window[cb]; reject(new Error('JSONP script failed')); };
+    document.head.appendChild(s);
+  });
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const done = val => { if (!settled) { settled = true; resolve(val); } };
+    fetchAttempt.then(done).catch(() => {});
+    jsonpAttempt.then(done).catch(() => {});
+    Promise.allSettled([fetchAttempt, jsonpAttempt]).then(results => {
+      if (!settled) {
+        const ok = results.find(r => r.status === 'fulfilled' && r.value);
+        if (ok) resolve(ok.value);
+        else reject(new Error(tl('Не удалось определить город', 'לא ניתן לקבוע את העיר', 'Could not determine city')));
+      }
+    });
+  });
+}
+
+// ── Elevation via Open-Meteo ──────────────────────────
+async function getElevation(lat, lon) {
+  try {
+    const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`);
+    const d = await r.json();
+    return (d.elevation && d.elevation[0] != null) ? Math.round(d.elevation[0]) : null;
+  } catch(_) { return null; }
+}
+
+// ── Status helpers ────────────────────────────────────
+function setGeoStatus(text, elId) {
+  const id = elId || (document.getElementById('geo-det-status') ? 'geo-det-status' : 'onb-geo-status-txt');
+  const el = document.getElementById('geo-det-status');
+  if (el) { el.classList.toggle('hidden', !text); el.textContent = text; }
+}
+
+function setLocError(msg, inOnb) {
+  setGeoStatus('⚠️ ' + msg);
+  const btn = document.getElementById(inOnb ? 'onb-geo-btn' : 'loc-btn');
+  if (btn) btn.innerHTML = '🔄 <span>' + tl('Попробовать снова','נסה שוב','Try again') + '</span>';
+  const ls = document.getElementById(inOnb ? 'onb-loc-status' : 'loc-status');
+  if (ls) {
+    ls.className = 'abanner ab-warning mb3';
+    ls.innerHTML = `<span class="ab-icon">⚠️</span><div class="ab">
+      <strong>${tl('Не удалось определить автоматически','לא ניתן לזהות אוטומטית','Could not detect automatically')}</strong>
+      <p>${msg}</p></div>`;
+    ls.style.display = 'flex';
+  }
+}
+
+// ── Main GPS flow ─────────────────────────────────────
+function reqLoc(inOnb) {
+  const btnId = inOnb ? 'onb-geo-btn' : 'loc-btn';
+  const btn = document.getElementById(btnId);
+  if (btn) btn.innerHTML = '⏳ <span>' + tl('Определяем...','מאתר...','Detecting...') + '</span>';
+  setGeoStatus(tl('Запрашиваем GPS...','מבקש GPS...','Requesting GPS...'));
+
+  if (!navigator.geolocation) {
+    setLocError(tl('Геолокация недоступна в этом браузере','גיאולוקציה אינה זמינה','Geolocation not available in this browser'), inOnb);
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    pos => geoSuccess(pos, inOnb),
+    err => {
+      const msgs = {
+        ru: { 1:'Нет разрешения — разрешите доступ к геолокации в браузере', 2:'Координаты недоступны — проверьте службы геолокации', 3:'Таймаут GPS — попробуйте снова' },
+        he: { 1:'אין הרשאה — אפשר גישה לגיאולוקציה בדפדפן', 2:'קואורדינטות לא זמינות', 3:'פג זמן GPS — נסה שוב' },
+        en: { 1:'No permission — allow location access in browser', 2:'Coordinates unavailable — check location services', 3:'GPS timeout — try again' },
+      };
+      setLocError((msgs[LANG] || msgs.ru)[err.code] || tl('Ошибка GPS: ','שגיאת GPS: ','GPS error: ') + err.message, inOnb);
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+}
+
+async function geoSuccess(pos, inOnb) {
+  const { latitude: lat, longitude: lon, accuracy } = pos.coords;
+  setGeoStatus('📡 GPS: ±' + Math.round(accuracy) + tl(' м · Получаем название города...', ' מ׳ · מאתרים שם עיר...', ' m · Getting city name...'));
+  try {
+    const [ruResult, heResult, enResult, alt] = await Promise.all([
+      reverseGeocode(lat, lon, 'ru').catch(() => ''),
+      reverseGeocode(lat, lon, 'he').catch(() => ''),
+      reverseGeocode(lat, lon, 'en').catch(() => ''),
+      getElevation(lat, lon),
+    ]);
+    _pendingLoc = {
+      lat, lon, alt,
+      nameRu: ruResult || 'Неизвестно',
+      nameHe: heResult || ruResult || 'לא ידוע',
+      nameEn: enResult || ruResult || 'Unknown',
+      source: 'geo',
+    };
+    setGeoStatus('');
+    showGeoModal(inOnb);
+  } catch(e) {
+    setLocError(tl('Не удалось определить местоположение: ','לא ניתן לקבוע מיקום: ','Could not determine location: ') + e.message, inOnb);
+  }
+}
+
+function showGeoModal(inOnb) {
+  if (!_pendingLoc) return;
+  const name = locName(_pendingLoc);
+  document.getElementById('modal-loc-name').textContent = name || tl('Неизвестно','לא ידוע','Unknown');
+  const altStr = _pendingLoc.alt != null ? `<br>⛰️ ${_pendingLoc.alt} ${tl('м н.у.м.','מ׳ מ.פ.י.','m a.s.l.')}` : '';
+  document.getElementById('modal-loc-sub').innerHTML =
+    `📍 ${_pendingLoc.lat.toFixed(4)}, ${_pendingLoc.lon.toFixed(4)}${altStr}`;
+  // store whether triggered from onboarding
+  document.getElementById('geoModal').dataset.fromOnb = inOnb ? '1' : '0';
+  document.getElementById('geoModal').classList.add('on');
+}
+
+function confirmGeo() {
+  if (!_pendingLoc) return;
+  S.location = { ..._pendingLoc };
+  save();
+  document.getElementById('geoModal').classList.remove('on');
+
+  const name = locName(S.location);
+  const altStr = S.location.alt != null ? ` · ${S.location.alt} ${tl('м н.у.м.','מ׳ מ.פ.י.','m a.s.l.')}` : '';
+  setGeoStatus('✅ ' + name + altStr);
+
+  // Update onboarding loc-status banner
+  const ls = document.getElementById('onb-loc-status');
+  if (ls) {
+    ls.className = 'abanner ab-info mb3';
+    ls.innerHTML = `<span class="ab-icon">✅</span><div class="ab">
+      <strong>${name}</strong>
+      <p>${S.location.lat.toFixed(4)}, ${S.location.lon.toFixed(4)}${altStr}</p></div>`;
+    ls.style.display = 'flex';
+  }
+  const btn = document.getElementById('onb-geo-btn');
+  if (btn) btn.innerHTML = '✅ <span>' + name + '</span>';
+
+  _pendingLoc = null;
+  // If main app is already running, refresh
+  if (document.getElementById('main').style.display !== 'none') {
+    updateHdrCity();
+    fetchWeather();
+  }
+}
+
+function retryGeo() {
+  document.getElementById('geoModal').classList.remove('on');
+  _pendingLoc = null;
+  const fromOnb = document.getElementById('geoModal').dataset.fromOnb === '1';
+  reqLoc(fromOnb);
+}
+
+// ── City search autocomplete (Open-Meteo Geocoding) ───
+function onCityModalInput(val) { _citySearch(val, 'city-modal-suggestions', false); }
+function onCityOnbInput(val)   { _citySearch(val, 'city-onb-suggestions', true); }
+
+function _citySearch(val, suggestionsId, inOnb) {
+  const box = document.getElementById(suggestionsId);
+  if (!box) return;
+  clearTimeout(_citySearchTimer);
+  if (val.length < 2) { box.style.display = 'none'; return; }
+  box.innerHTML = `<div style="padding:9px 12px;font-size:.72rem;color:var(--muted)">⏳ ${tl('Поиск...','מחפש...','Searching...')}</div>`;
+  box.style.display = 'block';
+  _citySearchTimer = setTimeout(async () => {
+    try {
+      const lang = LANG === 'he' ? 'he' : LANG === 'en' ? 'en' : 'ru';
+      const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(val)}&count=6&language=${lang}&format=json`);
+      const d = await r.json();
+      if (!d.results?.length) {
+        box.innerHTML = `<div style="padding:9px 12px;font-size:.72rem;color:var(--muted)">${tl('Город не найден','עיר לא נמצאה','City not found')}</div>`;
+        return;
+      }
+      _cityResults = d.results;
+      box.innerHTML = _cityResults.map((c, i) => {
+        const label = [c.name, c.admin1, c.country].filter(Boolean).join(', ');
+        return `<div data-idx="${i}" style="padding:9px 12px;font-size:.75rem;cursor:pointer;border-bottom:1px solid var(--border);color:var(--text)">${label}</div>`;
+      }).join('');
+      box.querySelectorAll('[data-idx]').forEach(el => {
+        el.addEventListener('mousedown', e => e.preventDefault());
+        el.addEventListener('click', () => {
+          const c = _cityResults[parseInt(el.dataset.idx)];
+          if (inOnb) selectCityOnb(c); else selectCityModal(c);
+        });
+        el.addEventListener('mouseover', () => el.style.background = 'var(--surface2)');
+        el.addEventListener('mouseout', () => el.style.background = '');
+      });
+    } catch(e) {
+      box.innerHTML = `<div style="padding:9px 12px;font-size:.72rem;color:var(--muted)">⚠️ ${tl('Ошибка сети','שגיאת רשת','Network error')}</div>`;
+    }
+  }, 350);
+}
+
+function _applyCity(c, inOnb) {
+  const nameBase = [c.name, c.country].filter(Boolean).join(', ');
+  _pendingLoc = {
+    lat: c.latitude, lon: c.longitude,
+    alt: c.elevation != null ? Math.round(c.elevation) : null,
+    nameRu: nameBase, nameHe: nameBase, nameEn: nameBase,
+    source: 'manual',
+  };
+  // Fetch localised names in parallel
+  Promise.all([
+    reverseGeocode(c.latitude, c.longitude, 'ru').catch(() => null),
+    reverseGeocode(c.latitude, c.longitude, 'he').catch(() => null),
+    reverseGeocode(c.latitude, c.longitude, 'en').catch(() => null),
+  ]).then(([ru, he, en]) => {
+    if (ru) _pendingLoc.nameRu = ru;
+    if (he) _pendingLoc.nameHe = he;
+    if (en) _pendingLoc.nameEn = en;
+  });
+  showGeoModal(inOnb);
+}
+
+function selectCityOnb(c) {
+  const box = document.getElementById('city-onb-suggestions');
+  if (box) box.style.display = 'none';
+  const inp = document.getElementById('city-onb-input');
+  if (inp) inp.value = [c.name, c.country].filter(Boolean).join(', ');
+
+  // For onboarding manual selection: set location directly, no confirmation modal needed
+  const nameBase = [c.name, c.country].filter(Boolean).join(', ');
+  S.location = {
+    lat: c.latitude, lon: c.longitude,
+    alt: c.elevation != null ? Math.round(c.elevation) : null,
+    nameRu: nameBase, nameHe: nameBase, nameEn: nameBase,
+    source: 'manual',
+  };
+  save();
+
+  // Update the status banner immediately
+  const ls = document.getElementById('onb-loc-status');
+  const altStr = S.location.alt != null ? ` · ${S.location.alt} ${tl('м н.у.м.','מ׳ מ.פ.י.','m a.s.l.')}` : '';
+  if (ls) {
+    ls.className = 'abanner ab-info mb3';
+    ls.innerHTML = `<span class="ab-icon">✅</span><div class="ab">
+      <strong>${nameBase}</strong>
+      <p>${S.location.lat.toFixed(4)}, ${S.location.lon.toFixed(4)}${altStr}</p></div>`;
+    ls.style.display = 'flex';
+  }
+
+  // Fetch localised names in background and update
+  Promise.all([
+    reverseGeocode(c.latitude, c.longitude, 'ru').catch(() => null),
+    reverseGeocode(c.latitude, c.longitude, 'he').catch(() => null),
+    reverseGeocode(c.latitude, c.longitude, 'en').catch(() => null),
+  ]).then(([ru, he, en]) => {
+    if (ru) S.location.nameRu = ru;
+    if (he) S.location.nameHe = he;
+    if (en) S.location.nameEn = en;
+    save();
+  });
+}
+
+function selectCityModal(c) {
+  const box = document.getElementById('city-modal-suggestions');
+  if (box) box.style.display = 'none';
+  const inp = document.getElementById('city-modal-input');
+  if (inp) inp.value = [c.name, c.country].filter(Boolean).join(', ');
+  closeMo('cityModal');
+  _applyCity(c, false);
+}
+
+function openCityModal() {
+  const inp = document.getElementById('city-modal-input');
+  if (inp) inp.value = '';
+  const box = document.getElementById('city-modal-suggestions');
+  if (box) box.style.display = 'none';
+  openMo('cityModal');
+  setTimeout(() => inp?.focus(), 100);
+}
+
+function reqLocFromModal() {
+  closeMo('cityModal');
+  reqLoc(false);
+}
+
+// ── MAIN BOOT ─────────────────────────────────────────
+function startMain() {
+  document.getElementById('onb').style.display = 'none';
+  showMain();
+}
+
+function showMain() {
+  const m = document.getElementById('main');
+  m.style.display = 'flex';
+  m.classList.remove('hidden');
+  updateHdrCity();
+  renderHome();
+  fetchWeather();
+  initEntryTime();
+  initBackdate();
+  initRepDates();
+}
+
+// ── NAVIGATION ────────────────────────────────────────
+const TABS = ['home','entry','forecast','analytics','report'];
+
+function goTab(name) {
+  TABS.forEach(t => {
+    document.getElementById('t-' + t)?.classList.toggle('on', t === name);
+    document.getElementById('nb-' + (t === 'forecast' ? 'forecast' : t === 'entry' ? 'entry' : t))
+      ?.classList.toggle('on', t === name);
+  });
+  if (name === 'analytics') updateAnalytics();
+  if (name === 'forecast') { renderMainChart(); renderHourlyGrid(); }
+  if (name === 'report') initRepDates();
+}
+
+// ── HEADER ────────────────────────────────────────────
+function updateHdrCity() {
+  const name = locName(S.location);
+  const c = document.getElementById('hdr-city');
+  if (c) c.textContent = name;
+  const b = document.getElementById('home-city-badge');
+  if (b) b.textContent = name;
+  // Update app title for current language
+  const htitle = document.getElementById('hdr-title');
+  if (htitle) {
+    const citySpan = `<span id="hdr-city" style="font-family:var(--mono);font-style:normal;font-size:.63rem;color:var(--muted);font-weight:300;margin-left:6px">${name}</span>`;
+    if (LANG === 'he') htitle.innerHTML = '🌿 פיברו<em>מזג אוויר</em> ' + citySpan;
+    else if (LANG === 'en') htitle.innerHTML = '🌿 Fibro<em>Weather</em> ' + citySpan;
+    else htitle.innerHTML = '🌿 Фибро<em>Погода</em> ' + citySpan;
+  }
+}
+
+// ── WEATHER FETCH ─────────────────────────────────────
+async function fetchWeather() {
+  if (!S.location?.lat) return;
+  const { lat, lon } = S.location;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`
+    + `&hourly=surface_pressure,relative_humidity_2m,dew_point_2m,temperature_2m,wind_speed_10m,wind_direction_10m,uv_index,sunshine_duration`
+    + `&current=surface_pressure,relative_humidity_2m,temperature_2m,dew_point_2m,wind_speed_10m`
+    + `&timezone=auto&forecast_days=3`;
+  try {
+    const r = await fetch(url);
+    const d = await r.json();
+    S.weather = d;
+    S.forecast = buildForecast(d);
+    save();
+    renderWeather();
+    renderForecastBars();
+  } catch(e) { console.warn('Weather fetch failed', e); }
+  fetchKp();
+}
+
+async function fetchKp() {
+  try {
+    const r = await fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json');
+    const d = await r.json();
+    const last = d[d.length - 1];
+    if (last) {
+      const kp = parseFloat(last[1]);
+      if (S.weather) S.weather.kp = kp;
+      document.getElementById('wc-kp').textContent = kp.toFixed(1);
+      document.getElementById('hdr-pm').textContent = 'Kp' + kp.toFixed(1);
+    }
+  } catch(e) {}
+}
+
+// getElevation — see geolocation section above
+
+async function reverseGeocode(lat, lon, cb) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`, {headers:{'Accept-Language': LANG}});
+    const d = await r.json();
+    const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || '—';
+    cb(city);
+  } catch(e) { cb('—'); }
+}
+
+// ── BUILD FORECAST ARRAY ──────────────────────────────
+function buildForecast(meteo) {
+  const hours = meteo.hourly;
+  const now = Date.now();
+  const result = [];
+  for (let i = 0; i < hours.time.length && result.length < 49; i++) {
+    const t = new Date(hours.time[i]).getTime();
+    if (t < now - 3600000) continue;
+    const pres = hours.surface_pressure[i] * 0.75006;
+    result.push({
+      ts: t,
+      pressure: +pres.toFixed(1),
+      humidity: hours.relative_humidity_2m[i],
+      temp: hours.temperature_2m[i],
+    });
+  }
+  // compute deltas
+  for (let i = 0; i < result.length; i++) {
+    const ref12 = result[Math.max(0, i - 12)];
+    result[i].delta12 = +(result[i].pressure - ref12.pressure).toFixed(1);
+  }
+  return result;
+}
+
+// ── RENDER WEATHER ────────────────────────────────────
+function renderWeather() {
+  const w = S.weather;
+  if (!w?.current) return;
+  const pres = +(w.current.surface_pressure * 0.75006).toFixed(1);
+  document.getElementById('pres-val').textContent = pres;
+  document.getElementById('wc-hum').textContent = w.current.relative_humidity_2m + '%';
+  document.getElementById('wc-temp').textContent = w.current.temperature_2m + '°';
+  document.getElementById('hdr-temp').textContent = w.current.temperature_2m + '°';
+
+  // Δ12h from forecast
+  if (S.forecast?.length > 12) {
+    const d = S.forecast[0].delta12;
+    const el = document.getElementById('delta-val');
+    el.textContent = (d >= 0 ? '+' : '') + d;
+    el.className = 'delta-val ' + (d < -5 ? 'delta-dn' : d > 5 ? 'delta-up' : 'delta-flat');
+  }
+
+  // altitude
+  if (S.location?.alt != null) {
+    document.getElementById('l-pres-alt').textContent = tl('высота ','גובה ','alt ') + S.location.alt + ' м';
+  }
+
+  // moon
+  const moon = calcMoon();
+  document.getElementById('wc-moon').textContent = moon.pct + '%';
+  document.getElementById('moon-icon').textContent = moon.icon;
+
+  // hamsin
+  const t = w.current.temperature_2m;
+  const hum = w.current.relative_humidity_2m;
+  const wind = w.current.wind_speed_10m;
+  const hz = document.getElementById('hamsin-z');
+  if (t > 35 && hum < 25 && wind > 30) {
+    hz.innerHTML = `<div class="hamsin">
+      <span class="hamsin-icon">🌪️</span>
+      <div><strong>${LANG === 'ru' ? 'Хамсин — высокий риск обострения' : LANG === 'he' ? 'חמסין — סיכון גבוה' : 'Hamsin — high flare risk'}</strong>
+      <span>${LANG === 'ru' ? 'Жара + низкая влажность + сильный ветер' : 'Heat + low humidity + strong wind'}</span></div></div>`;
+  } else hz.innerHTML = '';
+}
+
+// ── MOON CALCULATION ─────────────────────────────────
+function calcMoon() {
+  const synodic = 29.53058867;
+  const known = new Date('2000-01-06T18:14:00Z').getTime();
+  const days = (Date.now() - known) / 86400000;
+  const phase = ((days % synodic) + synodic) % synodic;
+  const pct = Math.round((phase / synodic) * 100);
+  const icons = ['🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘'];
+  const icon = icons[Math.round(phase / synodic * 8) % 8];
+  return { phase, pct, icon };
+}
+
+// ── RISK ASSESSMENT ───────────────────────────────────
+function assessRisk(pressure, delta12, humidity) {
+  let score = 0;
+  if (delta12 < -8) score += 3;
+  else if (delta12 < -5) score += 2;
+  if (humidity > 80) score += 2;
+  if (score >= 4) return 'HIGH';
+  if (score >= 2) return 'MODERATE';
+  return 'LOW';
+}
+
+function renderRiskBadge(risk) {
+  const el = document.getElementById('risk-badge');
+  const txt = document.getElementById('risk-text');
+  el.className = 'spill ' + (risk === 'HIGH' ? 'sp-high' : risk === 'MODERATE' ? 'sp-mod' : 'sp-low');
+  const labels = {
+    ru: { LOW: 'LOW — низкий риск обострения', MODERATE: 'MODERATE — умеренный риск', HIGH: 'HIGH — высокий риск флэра' },
+    he: { LOW: 'LOW — סיכון נמוך', MODERATE: 'MODERATE — סיכון בינוני', HIGH: 'HIGH — סיכון גבוה' },
+    en: { LOW: 'LOW — low flare risk', MODERATE: 'MODERATE — moderate risk', HIGH: 'HIGH — high flare risk' },
+  };
+  txt.textContent = (labels[LANG] || labels.ru)[risk];
+}
+
+// ── FORECAST BARS ─────────────────────────────────────
+function renderForecastBars() {
+  const fc = S.forecast;
+  if (!fc?.length) return;
+  const container = document.getElementById('fc-bars-mini');
+  if (!container) return;
+  // sample every 2h, 24 bars
+  const sample = [];
+  for (let i = 0; i < fc.length && sample.length < 24; i += 2) sample.push(fc[i]);
+  const probs = sample.map(h => forecastProb(h));
+  const max = Math.max(...probs, 20);
+  container.innerHTML = sample.map((h, i) => {
+    const p = probs[i];
+    const cls = p >= 60 ? 'high' : p >= 35 ? 'mod' : 'low';
+    return `<div class="fc-bar ${cls}" style="height:${Math.max(6, (p/max)*100)}%" title="${p}%"></div>`;
+  }).join('');
+
+  // risk from current conditions
+  if (fc[0]) {
+    const risk = assessRisk(fc[0].pressure, fc[0].delta12, fc[0].humidity);
+    renderRiskBadge(risk);
+  }
+
+  // alert banner
+  const peakIdx = probs.indexOf(Math.max(...probs));
+  const peak = probs[peakIdx];
+  const az = document.getElementById('fc-alert-z');
+  if (peak >= 60 && az) {
+    const hrs = peakIdx * 2;
+    az.innerHTML = `<div class="abanner ab-danger">
+      <span class="ab-icon">⚠️</span>
+      <div class="ab"><strong>${LANG === 'ru' ? `Опасное окно через ~${hrs}ч (${peak}%)` : `Risk window in ~${hrs}h (${peak}%)`}</strong>
+      <p>${LANG === 'ru' ? 'Рекомендуется снизить нагрузку и планировать отдых' : 'Reduce activity and plan rest'}</p></div></div>`;
+  } else if (az) az.innerHTML = '';
+}
+
+function forecastProb(h) {
+  const p = S.personalProfile;
+  let score = 0;
+  if (p?.params) {
+    const pw = p.params;
+    const presW = pw.pressure_change_12h?.r || 0;
+    const humW  = pw.humidity?.r || 0;
+    const tempW = pw.temperature?.r || 0;
+    if (presW < -0.2 && h.delta12 < 0) score += Math.min(50, Math.abs(presW) * Math.abs(h.delta12) * 5);
+    if (presW >  0.2 && h.delta12 > 0) score += Math.min(30, presW * h.delta12 * 4);
+    if (humW  >  0.2 && h.humidity > 70) score += humW * (h.humidity - 70) * 1.2;
+    if (tempW >  0.2 && h.temp > 28)    score += tempW * (h.temp - 28) * 2;
+    if (tempW < -0.2 && h.temp < 15)    score += Math.abs(tempW) * (15 - h.temp) * 2;
+    if (p.personalThreshold && h.delta12 <= p.personalThreshold) score += 25;
+  } else {
+    if (h.delta12 < -8) score += 40;
+    else if (h.delta12 < -5) score += 25;
+    else if (h.delta12 < -3) score += 10;
+    if (h.humidity > 80) score += 20;
+    else if (h.humidity > 70) score += 10;
+  }
+  return Math.min(95, Math.max(5, Math.round(score)));
+}
+
+// ── ENTRY FORM ────────────────────────────────────────
+const DOMAINS = ['pain','fatigue','stiffness','sleep','fog','mood','tender','sensitivity'];
+const WEIGHTS = { pain:.30, fatigue:.20, stiffness:.10, sleep:.15, fog:.10, mood:.05, tender:.05, sensitivity:.05 };
+
+function updDomain(el, key) {
+  const v = +el.value;
+  const pct = (v / 10) * 100;
+  el.style.setProperty('--pct', pct + '%');
+  document.getElementById('v-' + key).textContent = v;
+  computeFlareIndex();
+}
+
+function computeFlareIndex() {
+  let fi = 0;
+  DOMAINS.forEach(d => {
+    const el = document.getElementById('r-' + d);
+    if (el) fi += +el.value * (WEIGHTS[d] || 0);
+  });
+  fi = +fi.toFixed(1);
+  document.getElementById('fi-val').textContent = fi;
+  const risk = fi >= 6 ? 'HIGH' : fi >= 4 ? 'MODERATE' : 'LOW';
+  const el = document.getElementById('fi-risk');
+  el.textContent = risk;
+  el.style.color = risk === 'HIGH' ? 'var(--high)' : risk === 'MODERATE' ? 'var(--mod)' : 'var(--low)';
+}
+
+let entryMode = 'now';
+function setEntryMode(m) {
+  entryMode = m;
+  document.getElementById('btn-now').className = 'btn btn-sm ' + (m === 'now' ? 'btn-p' : 'btn-s');
+  document.getElementById('btn-back').className = 'btn btn-sm ' + (m === 'back' ? 'btn-p' : 'btn-s');
+  const row = document.getElementById('backdate-row');
+  row.style.display = m === 'back' ? 'flex' : 'none';
+  row.classList.toggle('hidden', m !== 'back');
+}
+
+function initEntryTime() {
+  const tick = () => {
+    const el = document.getElementById('entry-time');
+    if (el) el.textContent = new Date().toLocaleTimeString(locale(), {hour:'2-digit',minute:'2-digit'});
+  };
+  tick(); setInterval(tick, 60000);
+}
+
+function initBackdate() {
+  const days = document.getElementById('back-day');
+  const months = document.getElementById('back-month');
+  const years = document.getElementById('back-year');
+  const hours = document.getElementById('back-hour');
+  if (!days) return;
+  for (let i = 1; i <= 31; i++) days.add(new Option(i, i));
+  const mn = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+  mn.forEach((m, i) => months.add(new Option(m, i)));
+  const y = new Date().getFullYear();
+  for (let i = y; i >= y - 2; i--) years.add(new Option(i, i));
+  for (let h = 0; h < 24; h++) hours.add(new Option(String(h).padStart(2,'0') + ':00', h));
+  const now = new Date();
+  days.value = now.getDate(); months.value = now.getMonth(); years.value = now.getFullYear(); hours.value = now.getHours();
+}
+
+function getEntryTimestamp() {
+  if (entryMode === 'now') return Date.now();
+  const d = new Date(+document.getElementById('back-year').value, +document.getElementById('back-month').value,
+    +document.getElementById('back-day').value, +document.getElementById('back-hour').value);
+  return d.getTime();
+}
+
+function saveEntry() {
+  const scores = {};
+  DOMAINS.forEach(d => { scores[d] = +(document.getElementById('r-' + d)?.value || 0); });
+  let fi = 0;
+  DOMAINS.forEach(d => { fi += scores[d] * (WEIGHTS[d] || 0); });
+  fi = +fi.toFixed(2);
+  const risk = fi >= 6 ? 'HIGH' : fi >= 4 ? 'MODERATE' : 'LOW';
+  const ts = getEntryTimestamp();
+
+  // collect env snapshot
+  const env = collectEnv();
+
+  const entry = {
+    ts,
+    pain: scores.pain,
+    flareIndex: fi,
+    scores,
+    note: document.getElementById('entry-note')?.value.trim() || '',
+    risk,
+    locationName: locName(S.location),
+    env,
+  };
+  S.entries.unshift(entry);
+  if (S.entries.length >= 20) triggerProfileRecompute();
+  save();
+
+  // reset sliders
+  DOMAINS.forEach(d => {
+    const el = document.getElementById('r-' + d);
+    if (el) { el.value = 0; el.style.setProperty('--pct','0%'); document.getElementById('v-'+d).textContent = '0'; }
+  });
+  document.getElementById('fi-val').textContent = '0.0';
+  document.getElementById('entry-note').value = '';
+
+  renderHome();
+  goTab('home');
+}
+
+function collectEnv() {
+  const w = S.weather;
+  const fc = S.forecast?.[0];
+  return {
+    pressure_mmhg: fc?.pressure || null,
+    pressure_change_12h: fc?.delta12 || null,
+    humidity: w?.current?.relative_humidity_2m || null,
+    dew_point: w?.current?.dew_point_2m || null,
+    wind_speed: w?.current?.wind_speed_10m || null,
+    temperature: w?.current?.temperature_2m || null,
+    kp_index: w?.kp || null,
+    moon_phase: calcMoon().phase,
+    lat: S.location?.lat, lon: S.location?.lon, alt: S.location?.alt,
+  };
+}
+
+// ── CHART: PRESSURE + PAIN ────────────────────────────
+let mainChartInst = null;
+
+function renderMainChart() {
+  const canvas = document.getElementById('main-chart');
+  if (!canvas) return;
+  if (mainChartInst) { mainChartInst.destroy(); mainChartInst = null; }
+
+  const fc = S.forecast || [];
+  const now = Date.now();
+
+  // Pressure line: 48h forecast
+  const presLabels = fc.slice(0, 49).map(h => {
+    const d = new Date(h.ts);
+    return d.getHours() === 0
+      ? d.toLocaleDateString(locale(), {day:'numeric',month:'short'})
+      : d.getHours() + ':00';
+  });
+  const presData = fc.slice(0, 49).map(h => h.pressure);
+
+  // Pain dots: diary entries within ±48h
+  const painPoints = S.entries
+    .filter(e => e.ts >= now - 48*3600000 && e.ts <= now + 48*3600000)
+    .map(e => ({ x: e.ts, y: e.pain }));
+
+  const style = getComputedStyle(document.documentElement);
+  const accent = '#7e6e9a';
+  const high   = '#a05060';
+  const muted  = '#877870';
+  const border = '#ddd6cc';
+
+  mainChartInst = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: presLabels,
+      datasets: [
+        {
+          label: 'Давление мм рт.ст.',
+          data: presData,
+          borderColor: accent,
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.3,
+          yAxisID: 'yPres',
+          fill: false,
+        },
+        {
+          label: 'Боль',
+          data: Array(presLabels.length).fill(null), // placeholder; pain uses scatter
+          borderColor: 'transparent',
+          yAxisID: 'yPain',
+          pointRadius: 0,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.datasetIndex === 0
+              ? `${ctx.parsed.y.toFixed(1)} мм рт.ст.`
+              : `Боль: ${ctx.parsed.y}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: muted, font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 8 },
+          grid: { color: border },
+        },
+        yPres: {
+          position: 'left',
+          ticks: { color: accent, font: { family: 'JetBrains Mono', size: 10 } },
+          grid: { color: border },
+        },
+        yPain: {
+          position: 'right',
+          min: 0, max: 10,
+          ticks: { color: high, font: { family: 'JetBrains Mono', size: 10 }, stepSize: 2 },
+          grid: { drawOnChartArea: false },
+        }
+      }
+    },
+    plugins: [{
+      id: 'painDots',
+      afterDatasetsDraw(chart) {
+        const { ctx, scales } = chart;
+        const xScale = scales.x, yScale = scales.yPain;
+        if (!xScale || !yScale) return;
+        const fc = S.forecast || [];
+        if (!fc.length) return;
+        const t0 = fc[0].ts, t1 = fc[Math.min(fc.length-1, 48)].ts;
+        const xRange = xScale.right - xScale.left;
+        const tRange = t1 - t0;
+        painPoints.forEach(pt => {
+          const xFrac = (pt.x - t0) / tRange;
+          const xPx = xScale.left + xFrac * xRange;
+          const yPx = yScale.getPixelForValue(pt.y);
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(xPx, yPx, 5, 0, Math.PI*2);
+          ctx.fillStyle = high;
+          ctx.globalAlpha = 0.85;
+          ctx.fill();
+          ctx.restore();
+        });
+      }
+    }]
+  });
+}
+
+// ── HOURLY GRID ───────────────────────────────────────
+function renderHourlyGrid() {
+  const fc = S.forecast;
+  const el = document.getElementById('fc-grid');
+  if (!el || !fc?.length) return;
+
+  const rows = fc.slice(0, 25).filter((_, i) => i % 2 === 0); // every 2h
+  const now = new Date();
+
+  const html = rows.map((h, i) => {
+    const prob = forecastProb(h);
+    const rCls = prob >= 60 ? 'r-high' : prob >= 35 ? 'r-mod' : 'r-low';
+    const pCls = prob >= 60 ? 'high' : prob >= 35 ? 'mod' : 'low';
+    const d = new Date(h.ts);
+    const timeStr = i === 0
+      ? (LANG==='ru' ? 'Сейчас' : LANG==='he' ? 'עכשיו' : 'Now')
+      : '+' + (i*2) + 'ч';
+    const dSign = h.delta12 > 0 ? '+' : '';
+    const dColor = h.delta12 < -5 ? 'var(--high)' : h.delta12 > 5 ? 'var(--mod)' : 'var(--dim)';
+    return `<div class="fc-cell ${rCls}">
+      <span class="fc-time">${timeStr}</span>
+      <span class="fc-pres">${h.pressure}</span>
+      <span class="fc-delta" style="color:${dColor}">${h.delta12 !== 0 ? dSign + h.delta12 : '—'}</span>
+      <span class="fc-prob ${pCls}">${prob}%</span>
+    </div>`;
+  }).join('');
+
+  const note = `<div class="xs dim mt2" id="l-fc-note">${S.personalProfile
+    ? (LANG==='ru' ? '✦ Прогноз основан на вашем персональном профиле' : '✦ Forecast based on your personal profile')
+    : (LANG==='ru' ? '* До 20 записей прогноз основан на общих порогах фибромиалгии' : '* Based on general fibromyalgia thresholds until 20 entries')
+  }</div>`;
+  el.innerHTML = html + note;
+}
+function renderHome() {
+  const entries = S.entries;
+  const noEnt = document.getElementById('no-entries');
+  const recZ = document.getElementById('recent-z');
+  if (!entries.length) {
+    noEnt?.classList.remove('hidden');
+    recZ?.classList.add('hidden');
+    return;
+  }
+  noEnt?.classList.add('hidden');
+  recZ?.classList.remove('hidden');
+  const list = document.getElementById('recent-list');
+  list.innerHTML = entries.slice(0, 3).map(e => recHtml(e)).join('');
+}
+
+function recHtml(e) {
+  const d = new Date(e.ts);
+  const dateStr = d.toLocaleDateString(locale(), {day:'numeric',month:'short'});
+  const timeStr = d.toLocaleTimeString(locale(), {hour:'2-digit',minute:'2-digit'});
+  const cls = e.risk === 'HIGH' ? 'r-high' : e.risk === 'MODERATE' ? 'r-mod' : 'r-low';
+  const bars = Array.from({length:10}, (_,i) =>
+    `<span class="mini-seg ${i < e.pain ? 'on' : ''}"></span>`).join('');
+  return `<div class="rec ${cls}">
+    <div>
+      <div class="rec-pain">${e.pain}<span style="font-size:.8rem;color:var(--muted)">/10</span></div>
+      <div class="rec-fi">FI ${e.flareIndex.toFixed(1)} · ${e.risk}</div>
+    </div>
+    <div class="rec-meta">
+      <div>${dateStr}</div>
+      <div class="dim">${timeStr}</div>
+      <div class="mini-bar">${bars}</div>
+    </div>
+  </div>`;
+}
+
+// ── ANALYTICS ─────────────────────────────────────────
+function updateAnalytics() {
+  const entries = S.entries;
+  if (!entries.length) return;
+
+  const n = entries.length;
+  const avgPain = (entries.reduce((a,e) => a + e.pain, 0) / n).toFixed(1);
+  const avgFI = (entries.reduce((a,e) => a + e.flareIndex, 0) / n).toFixed(1);
+  const days = new Set(entries.map(e => new Date(e.ts).toDateString())).size;
+  const pctHigh = Math.round(entries.filter(e => e.risk === 'HIGH').length / n * 100);
+  const pctLow  = Math.round(entries.filter(e => e.risk === 'LOW').length / n * 100);
+
+  document.getElementById('st-pain').textContent = avgPain;
+  document.getElementById('st-fi').textContent = avgFI;
+  document.getElementById('st-cnt').textContent = n;
+  document.getElementById('st-days').textContent = days;
+  document.getElementById('st-high').textContent = pctHigh + '%';
+  document.getElementById('st-low').textContent = pctLow + '%';
+
+  // Profile progress
+  const progFill = document.getElementById('prog-fill');
+  const progCount = document.getElementById('prog-count');
+  const pct = Math.min(100, Math.round(n / 20 * 100));
+  if (progFill) progFill.style.width = pct + '%';
+  if (progCount) progCount.textContent = n + ' / 20';
+
+  if (n >= 20 && S.personalProfile) {
+    document.getElementById('profile-progress').classList.add('hidden');
+    document.getElementById('profile-bars').classList.remove('hidden');
+    renderProfileBars();
+  }
+
+  // All records list
+  const allList = document.getElementById('all-list');
+  if (entries.length) {
+    allList.innerHTML = entries.map(e => recHtml(e)).join('');
+  }
+}
+
+// ── SPEARMAN CORRELATION ENGINE ───────────────────────
+function spearman(xs, ys) {
+  const n = xs.length;
+  if (n < 5) return { r: 0, p: 1 };
+  const rank = arr => {
+    const sorted = [...arr].map((v,i) => [v,i]).sort((a,b) => a[0]-b[0]);
+    const ranks = new Array(n);
+    for (let i = 0; i < n; ) {
+      let j = i;
+      while (j < n - 1 && sorted[j][0] === sorted[j+1][0]) j++;
+      const avgR = (i + j) / 2 + 1;
+      for (let k = i; k <= j; k++) ranks[sorted[k][1]] = avgR;
+      i = j + 1;
+    }
+    return ranks;
+  };
+  const rx = rank(xs), ry = rank(ys);
+  const meanX = rx.reduce((a,v) => a+v,0)/n, meanY = ry.reduce((a,v) => a+v,0)/n;
+  let num=0, dx2=0, dy2=0;
+  for (let i=0; i<n; i++) {
+    num += (rx[i]-meanX)*(ry[i]-meanY);
+    dx2 += (rx[i]-meanX)**2;
+    dy2 += (ry[i]-meanY)**2;
+  }
+  const r = num / Math.sqrt(dx2*dy2);
+  // t-approximation p-value (two-sided)
+  const t = r * Math.sqrt((n-2)/(1-r*r+1e-10));
+  const p = 2 * (1 - tCDF(Math.abs(t), n-2));
+  return { r: isNaN(r) ? 0 : +r.toFixed(3), p: +p.toFixed(4) };
+}
+
+// Rough t-distribution CDF via continued fraction
+function tCDF(t, df) {
+  const x = df / (df + t*t);
+  return 1 - 0.5 * incompleteBeta(x, df/2, 0.5);
+}
+function incompleteBeta(x, a, b) {
+  // Lentz continued fraction
+  const maxIter = 100, eps = 1e-10;
+  const lbeta = lgamma(a) + lgamma(b) - lgamma(a+b);
+  if (x < 0 || x > 1) return 0;
+  if (x === 0) return 0; if (x === 1) return 1;
+  const front = Math.exp(Math.log(x)*a + Math.log(1-x)*b - lbeta) / a;
+  let d=1, c=1, f=1;
+  for (let i=0; i<=maxIter; i++) {
+    const m = Math.floor(i/2);
+    let num;
+    if (i===0) num=1;
+    else if (i%2===0) num = m*(b-m)*x/((a+2*m-1)*(a+2*m));
+    else num = -(a+m)*(a+b+m)*x/((a+2*m)*(a+2*m+1));
+    d = 1 + num*d; if (Math.abs(d)<eps) d=eps; d=1/d;
+    c = 1 + num/c; if (Math.abs(c)<eps) c=eps;
+    f *= c*d;
+    if (Math.abs(c*d-1) < eps) break;
+  }
+  return front * (f-1);
+}
+function lgamma(z) {
+  const c = [76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];
+  let y=z, x=z, tmp=x+5.5; tmp-=(x+0.5)*Math.log(tmp); let ser=1.000000000190015;
+  for (let j=0;j<6;j++) ser+=c[j]/++y;
+  return -tmp+Math.log(2.5066282746310005*ser/x);
+}
+
+// Extract env param arrays aligned with diary entries
+function extractPairs(param, lagHours = 0) {
+  const entries = S.entries.filter(e => e.env && e.env[param] != null);
+  if (!entries.length) return null;
+  const xs = entries.map(e => {
+    if (!lagHours) return e.env[param];
+    // find entry closest to ts - lagHours
+    const target = e.ts - lagHours * 3600000;
+    const candidates = S.entries.filter(c => c.env?.[param] != null && Math.abs(c.ts - target) < 4*3600000);
+    if (!candidates.length) return e.env[param];
+    candidates.sort((a,b) => Math.abs(a.ts-target)-Math.abs(b.ts-target));
+    return candidates[0].env[param];
+  });
+  const ys = entries.map(e => e.pain);
+  return { xs, ys };
+}
+
+const ENV_PARAMS = [
+  // key, label_ru, label_he, label_en, evidence
+  ['pressure_mmhg',      'Давление',        'לחץ אוויר',    'Pressure',       'proven'],
+  ['pressure_change_12h','Δ Давление 12ч',  'Δ לחץ 12ש',    'Δ Pressure 12h', 'proven'],
+  ['humidity',           'Влажность',       'לחות',         'Humidity',       'proven'],
+  ['dew_point',          'Точка росы',      'נקודת טל',     'Dew point',      'proven'],
+  ['wind_speed',         'Скорость ветра',  'מהירות רוח',   'Wind speed',     'ambiguous'],
+  ['temperature',        'Температура',     'טמפרטורה',     'Temperature',    'ambiguous'],
+  ['kp_index',           'Kp-индекс',       'מדד Kp',       'Kp index',       'experimental'],
+  ['moon_phase',         'Фаза луны',       'שלב הירח',     'Moon phase',     'experimental'],
+];
+
+const PARAM_LABELS = { ru: 0, he: 1, en: 2 };
+
+function paramLabel(key) {
+  const row = ENV_PARAMS.find(r => r[0] === key);
+  if (!row) return key;
+  return row[PARAM_LABELS[LANG] + 1] || row[1];
+}
+
+function triggerProfileRecompute() {
+  if (S.entries.length < 20) return;
+  const profile = { params: {}, lag: null, personalThreshold: null, computedAt: Date.now() };
+
+  // Compute correlations for all params at lag 0
+  ENV_PARAMS.forEach(([key]) => {
+    const pairs = extractPairs(key, 0);
+    if (!pairs || pairs.xs.length < 10) return;
+    profile.params[key] = spearman(pairs.xs, pairs.ys);
+  });
+
+  // Lag analysis for pressure_change_12h: test 0/6/12/18/24h
+  const lags = [0, 6, 12, 18, 24];
+  let bestLag = 0, bestR = 0;
+  lags.forEach(lag => {
+    const pairs = extractPairs('pressure_change_12h', lag);
+    if (!pairs || pairs.xs.length < 8) return;
+    const { r } = spearman(pairs.xs, pairs.ys);
+    if (Math.abs(r) > Math.abs(bestR)) { bestR = r; bestLag = lag; }
+  });
+  profile.lag = bestLag;
+  profile.lagR = +bestR.toFixed(3);
+
+  // Personal threshold: find Δpressure where pain≥7 in 50%+ cases
+  const presEntries = S.entries.filter(e => e.env?.pressure_change_12h != null);
+  const negative = presEntries.filter(e => e.env.pressure_change_12h < 0)
+    .sort((a,b) => a.env.pressure_change_12h - b.env.pressure_change_12h);
+  if (negative.length >= 5) {
+    for (let thresh = -1; thresh >= -15; thresh--) {
+      const grp = negative.filter(e => e.env.pressure_change_12h <= thresh);
+      if (grp.length < 3) continue;
+      const pct = grp.filter(e => e.pain >= 7).length / grp.length;
+      if (pct >= 0.5) { profile.personalThreshold = thresh; break; }
+    }
+  }
+
+  S.personalProfile = profile;
+  save();
+}
+
+function recomputeProfile() {
+  triggerProfileRecompute();
+  updateAnalytics();
+}
+
+// ── PROFILE BARS ──────────────────────────────────────
+function renderProfileBars() {
+  const p = S.personalProfile;
+  if (!p) return;
+
+  // Insight
+  const sig = Object.entries(p.params)
+    .filter(([,v]) => v.p < 0.05 && Math.abs(v.r) > 0.2)
+    .sort((a,b) => Math.abs(b[1].r) - Math.abs(a[1].r));
+
+  if (sig.length) {
+    const [topKey, topVal] = sig[0];
+    const dir = topVal.r < 0
+      ? (LANG==='ru' ? 'усиливает боль' : LANG==='he' ? 'מחמיר כאב' : 'increases pain')
+      : (LANG==='ru' ? 'снижает боль' : LANG==='he' ? 'מפחית כאב' : 'reduces pain');
+    document.getElementById('insight-title').textContent =
+      LANG==='ru' ? 'Ваш главный триггер' : LANG==='he' ? 'הטריגר העיקרי שלך' : 'Your top trigger';
+    document.getElementById('insight-text').textContent =
+      `${paramLabel(topKey)} ${dir} (r=${topVal.r}, p=${topVal.p})`;
+    document.getElementById('profile-insight').classList.remove('hidden');
+  }
+
+  if (p.lag) {
+    document.getElementById('lag-banner').classList.remove('hidden');
+    const lagTxt = LANG==='ru'
+      ? `Боль нарастает через ~${p.lag}ч после изменения давления (r=${p.lagR})`
+      : `Pain increases ~${p.lag}h after pressure change (r=${p.lagR})`;
+    document.getElementById('lag-text').textContent = lagTxt;
+  }
+
+  // Render bars by evidence group
+  const groups = { proven: 'corr-proven', ambiguous: 'corr-ambi', experimental: 'corr-exp' };
+  Object.entries(groups).forEach(([grp, elId]) => {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const params = ENV_PARAMS.filter(r => r[4] === grp);
+    el.innerHTML = params.map(([key]) => {
+      const v = p.params[key];
+      if (!v) return `<div class="corr-row"><span class="corr-name">${paramLabel(key)}</span><div class="corr-axis"><span class="corr-zero"></span><div class="corr-fill ins" style="width:1%"></div></div><span class="corr-r dim">—</span></div>`;
+      const r = v.r, sig = v.p < 0.05;
+      const pct = Math.round(Math.abs(r) * 48); // max 48% of half-axis
+      const cls = !sig ? 'ins' : r < 0 ? 'neg' : 'pos';
+      const opacity = sig ? 1 : 0.4;
+      return `<div class="corr-row">
+        <span class="corr-name">${paramLabel(key)}</span>
+        <div class="corr-axis">
+          <span class="corr-zero"></span>
+          <div class="corr-fill ${cls}" style="width:${pct}%;opacity:${opacity}"></div>
+        </div>
+        <span class="corr-r ${sig?'':'dim'}">r=${r}</span>
+      </div>`;
+    }).join('');
+  });
+}
+
+// ── REPORT ────────────────────────────────────────────
+function initRepDates() {
+  const to = new Date();
+  const from = new Date(to - 30 * 86400000);
+  const fmt = d => d.toISOString().split('T')[0];
+  const fEl = document.getElementById('rep-from');
+  const tEl = document.getElementById('rep-to');
+  if (fEl && !fEl.value) fEl.value = fmt(from);
+  if (tEl && !tEl.value) tEl.value = fmt(to);
+  const repDate = document.getElementById('rep-date');
+  if (repDate) repDate.textContent = new Date().toLocaleDateString(locale());
+
+  const entries = S.entries;
+  const days = new Set(entries.map(e => new Date(e.ts).toDateString())).size;
+  if (days >= 7) document.getElementById('rep-actions')?.classList.remove('hidden');
+}
+
+function genReport() {
+  const fromVal = document.getElementById('rep-from')?.value;
+  const toVal   = document.getElementById('rep-to')?.value;
+  const patient = document.getElementById('rep-patient')?.value || S.name || '—';
+  const doctor  = document.getElementById('rep-doctor')?.value || '—';
+  const meds    = document.getElementById('rep-meds')?.value || '—';
+
+  const fromTs = fromVal ? new Date(fromVal).getTime() : 0;
+  const toTs   = toVal   ? new Date(toVal).getTime() + 86399999 : Date.now();
+  const entries = S.entries.filter(e => e.ts >= fromTs && e.ts <= toTs);
+
+  if (!entries.length) {
+    alert(LANG==='ru' ? 'Нет записей в выбранном периоде' : 'No entries in selected period');
+    return;
+  }
+
+  const n = entries.length;
+  const days = new Set(entries.map(e => new Date(e.ts).toDateString())).size;
+  const avg = key => {
+    const vals = entries.map(e => typeof key === 'function' ? key(e) : e.scores?.[key] ?? e[key] ?? 0);
+    return (vals.reduce((a,v) => a+v, 0) / n).toFixed(1);
+  };
+  const avgPain = avg('pain');
+  const avgFI   = avg(e => e.flareIndex);
+  const avgFat  = avg('fatigue');
+  const avgSlp  = avg('sleep');
+  const avgFog  = avg('fog');
+  const pctHigh = Math.round(entries.filter(e => e.risk==='HIGH').length / n * 100);
+  const pctLow  = Math.round(entries.filter(e => e.risk==='LOW').length / n * 100);
+
+  // Correlation summary
+  const p = S.personalProfile;
+  const corrRows = p?.params ? ENV_PARAMS.map(([key,,,,evid]) => {
+    const v = p.params[key];
+    if (!v) return '';
+    const sig = v.p < 0.05 ? '✓' : '—';
+    const dir = v.r < 0 ? '↑ триггер' : v.r > 0 ? '↓ облегч.' : '—';
+    return `<tr><td>${paramLabel(key)}</td><td>${v.r}</td><td>${v.p}</td><td>${sig}</td><td>${dir}</td></tr>`;
+  }).join('') : '<tr><td colspan="5">Недостаточно данных (нужно ≥20 записей)</td></tr>';
+
+  // Observations table
+  const obsRows = entries.map(e => {
+    const d = new Date(e.ts);
+    const dateStr = d.toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'2-digit'});
+    const ev = e.env || {};
+    const rColor = e.risk==='HIGH' ? '#a05060' : e.risk==='MODERATE' ? '#a07840' : '#5a8a6a';
+    return `<tr>
+      <td>${dateStr}</td>
+      <td style="font-weight:600;color:${rColor}">${e.pain}</td>
+      <td>${e.flareIndex.toFixed(1)}</td>
+      <td>${e.scores?.fatigue ?? '—'}</td>
+      <td>${e.scores?.stiffness ?? '—'}</td>
+      <td>${e.scores?.sleep ?? '—'}</td>
+      <td>${e.scores?.fog ?? '—'}</td>
+      <td>${e.scores?.mood ?? '—'}</td>
+      <td>${e.scores?.tender ?? '—'}</td>
+      <td>${e.scores?.sensitivity ?? '—'}</td>
+      <td>${ev.pressure_mmhg?.toFixed(1) ?? '—'}</td>
+      <td>${ev.pressure_change_12h?.toFixed(1) ?? '—'}</td>
+      <td>${ev.humidity ?? '—'}</td>
+      <td>${ev.temperature ?? '—'}</td>
+      <td>${ev.kp_index?.toFixed(1) ?? '—'}</td>
+      <td style="font-weight:600;color:${rColor}">${e.risk}</td>
+    </tr>`;
+  }).join('');
+
+  const lagNote = p?.lag
+    ? `Лаговый анализ: максимальная корреляция при запаздывании ${p.lag}ч (r=${p.lagR})`
+    : 'Лаговый анализ: недостаточно данных';
+
+  const personalThreshNote = p?.personalThreshold
+    ? `Персональный порог: падение давления ≤${p.personalThreshold} мм/12ч → боль ≥7 в 50%+ случаев`
+    : 'Персональный порог: не определён (нужно больше записей с болью ≥7)';
+
+  const html = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>ФиброПогода — Отчёт</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Spectral:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  :root { --accent:#7e6e9a; --high:#a05060; --mod:#a07840; --low:#5a8a6a; --text:#2e2820; --muted:#877870; --border:#ddd6cc; --bg:#fdfbf9; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text); background:var(--bg); padding:32px 40px; max-width:1100px; margin:0 auto; }
+  h1 { font-family:'Spectral',serif; font-style:italic; font-weight:300; font-size:1.8rem; color:var(--accent); margin-bottom:4px; }
+  h2 { font-family:'Spectral',serif; font-style:italic; font-weight:300; font-size:1.1rem; color:var(--accent); margin:24px 0 10px; border-bottom:1px solid var(--border); padding-bottom:4px; }
+  h3 { font-size:.7rem; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); margin:16px 0 8px; }
+  .meta { font-size:.72rem; color:var(--muted); margin-bottom:24px; }
+  .meta span { color:var(--text); font-weight:400; }
+  .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+  .stat { background:#f4f0ed; border:1px solid var(--border); border-radius:8px; padding:12px; text-align:center; }
+  .stat-val { font-size:1.6rem; font-weight:300; color:var(--text); }
+  .stat-lbl { font-size:.6rem; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-top:4px; }
+  .info-row { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid var(--border); font-size:.72rem; }
+  .info-k { color:var(--muted); }
+  .ev-badge { display:inline-block; padding:1px 6px; border-radius:3px; font-size:.6rem; font-weight:600; }
+  .ev-g { background:rgba(90,138,106,.15); color:var(--low); }
+  .ev-y { background:rgba(160,120,64,.15); color:var(--mod); }
+  .ev-b { background:rgba(126,110,154,.15); color:var(--accent); }
+  table { width:100%; border-collapse:collapse; font-size:.68rem; margin-top:8px; }
+  th { background:#f4f0ed; border:1px solid var(--border); padding:5px 6px; text-align:center; font-weight:400; color:var(--muted); font-size:.6rem; text-transform:uppercase; letter-spacing:.08em; }
+  td { border:1px solid var(--border); padding:4px 6px; text-align:center; }
+  tr:nth-child(even) td { background:#fdfbf9; }
+  .th-g { border-top:2px solid var(--low) !important; }
+  .th-y { border-top:2px solid var(--mod) !important; }
+  .th-b { border-top:2px solid var(--accent) !important; }
+  .corr-table th { text-align:left; }
+  .page-break { page-break-before:always; margin-top:40px; }
+  .appendix-row td:first-child { font-weight:600; color:var(--accent); }
+  .appendix-row td { text-align:left; vertical-align:top; padding:6px 8px; font-size:.67rem; }
+  .disclaimer { font-size:.6rem; color:var(--muted); border-top:1px solid var(--border); padding-top:12px; margin-top:24px; line-height:1.6; }
+  @media print { .no-print { display:none; } body { padding:16px 20px; } }
+</style>
+</head>
+<body>
+<div class="no-print" style="background:#f4f0ed;border:1px solid #ddd6cc;border-radius:8px;padding:10px 16px;margin-bottom:20px;font-size:.72rem;display:flex;gap:12px;align-items:center">
+  <span>🌿 ФиброПогода — Отчёт</span>
+  <button onclick="window.print()" style="margin-left:auto;background:var(--accent);color:#fff;border:none;border-radius:4px;padding:5px 14px;cursor:pointer;font-family:inherit">🖨 Печать / PDF</button>
+</div>
+
+<h1>🌿 ФиброПогода</h1>
+<div style="font-family:'Spectral',serif;font-style:italic;font-size:.85rem;color:var(--muted);margin-bottom:16px">Персональный дневник фибромиалгии — отчёт для врача</div>
+<div class="meta">
+  Пациент: <span>${patient}</span> &nbsp;·&nbsp;
+  Врач: <span>${doctor}</span> &nbsp;·&nbsp;
+  Период: <span>${fromVal || '—'} — ${toVal || '—'}</span> &nbsp;·&nbsp;
+  Записей: <span>${n}</span> &nbsp;·&nbsp;
+  Дней: <span>${days}</span> &nbsp;·&nbsp;
+  Лекарства: <span>${meds}</span><br>
+  Место наблюдения: <span>${locName(S.location) || '—'}${S.location?.alt ? ` (${S.location.alt} м н.у.м.)` : ''}</span> &nbsp;·&nbsp;
+  Дата отчёта: <span>${new Date().toLocaleDateString('ru-RU')}</span>
+</div>
+
+<h2>Сводная статистика</h2>
+<div class="stats-grid">
+  <div class="stat"><div class="stat-val">${avgPain}</div><div class="stat-lbl">Средняя боль</div></div>
+  <div class="stat"><div class="stat-val">${avgFI}</div><div class="stat-lbl">Средний FI</div></div>
+  <div class="stat"><div class="stat-val">${avgFat}</div><div class="stat-lbl">Усталость</div></div>
+  <div class="stat"><div class="stat-val">${avgSlp}</div><div class="stat-lbl">Качество сна</div></div>
+  <div class="stat"><div class="stat-val">${avgFog}</div><div class="stat-lbl">Туман</div></div>
+  <div class="stat"><div class="stat-val">${pctHigh}%</div><div class="stat-lbl">Дней HIGH</div></div>
+  <div class="stat"><div class="stat-val">${pctLow}%</div><div class="stat-lbl">Дней LOW</div></div>
+  <div class="stat"><div class="stat-val">${days}</div><div class="stat-lbl">Дней наблюд.</div></div>
+</div>
+
+<h2>Метеокорреляции (Спирмен)</h2>
+<div class="info-row"><span class="info-k">Лаговый анализ</span><span>${lagNote}</span></div>
+<div class="info-row" style="margin-bottom:12px"><span class="info-k">Персональный порог</span><span>${personalThreshNote}</span></div>
+<table class="corr-table">
+  <thead>
+    <tr>
+      <th style="text-align:left">Параметр</th>
+      <th>Ур. доказ.</th>
+      <th>r (Спирмен)</th>
+      <th>p-value</th>
+      <th>Значимо</th>
+      <th>Направление</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${p?.params ? ENV_PARAMS.map(([key,,,, evid]) => {
+      const v = p.params[key];
+      const evClass = evid==='proven' ? 'ev-g' : evid==='ambiguous' ? 'ev-y' : 'ev-b';
+      const evLabel = evid==='proven' ? '🟢 Доказан' : evid==='ambiguous' ? '🟡 Неоднозн.' : '🔵 Эксперим.';
+      if (!v) return `<tr><td>${paramLabel(key)}</td><td><span class="ev-badge ${evClass}">${evLabel}</span></td><td colspan="4" style="color:var(--muted)">нет данных</td></tr>`;
+      const dir = v.r < -0.2 ? '↑ триггер боли' : v.r > 0.2 ? '↓ облегчение' : '— нейтрально';
+      const sigMark = v.p < 0.05 ? '<b style="color:var(--low)">✓ p&lt;0.05</b>' : '<span style="color:var(--muted)">— нс</span>';
+      return `<tr><td>${paramLabel(key)}</td><td><span class="ev-badge ${evClass}">${evLabel}</span></td><td>${v.r}</td><td>${v.p}</td><td>${sigMark}</td><td>${dir}</td></tr>`;
+    }).join('') : '<tr><td colspan="6" style="color:var(--muted)">Недостаточно данных (нужно ≥20 записей с геолокацией)</td></tr>'}
+  </tbody>
+</table>
+
+<h2>Таблица наблюдений</h2>
+<table>
+  <thead>
+    <tr>
+      <th rowspan="2">Дата</th>
+      <th rowspan="2">Боль</th>
+      <th rowspan="2">FI</th>
+      <th class="th-g">Уст.</th>
+      <th class="th-g">Скован.</th>
+      <th class="th-g">Сон</th>
+      <th class="th-g">Туман</th>
+      <th class="th-g">Наст.</th>
+      <th class="th-g">Болезн.</th>
+      <th class="th-g">Сенс.</th>
+      <th class="th-y">Давл.</th>
+      <th class="th-y">Δ12ч</th>
+      <th class="th-y">Влажн.%</th>
+      <th class="th-y">Темп.°C</th>
+      <th class="th-b">Kp</th>
+      <th rowspan="2">Риск</th>
+    </tr>
+  </thead>
+  <tbody>${obsRows}</tbody>
+</table>
+<div style="font-size:.6rem;color:var(--muted);margin-top:6px">
+  <span style="color:var(--low)">■</span> 🟢 FIQR-домены &nbsp;
+  <span style="color:var(--mod)">■</span> 🟡 Метеопараметры &nbsp;
+  <span style="color:var(--accent)">■</span> 🔵 Экспериментальные
+</div>
+
+<div class="page-break">
+<h2>Аппендикс — параметры наблюдения</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="text-align:left;width:140px">Параметр</th>
+      <th style="text-align:left">Уровень доказательности</th>
+      <th style="text-align:left">Механизм действия</th>
+      <th style="text-align:left">Источники</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr class="appendix-row"><td>Атм. давление (абс.)</td><td><span class="ev-badge ev-g">🟢 Доказан</span></td><td>Изменение давления влияет на проприоцепторы и ноцицепторы; при снижении давления воздух в тканях расширяется, раздражая болевые рецепторы</td><td>Fagerlund 2019; Strusberg 2002; McAlindon 2007</td></tr>
+    <tr class="appendix-row"><td>Δ давление 12ч</td><td><span class="ev-badge ev-g">🟢 Доказан</span></td><td>Скорость изменения давления — более чувствительный предиктор, чем абсолютное значение; резкие перепады (≥5 мм/12ч) ассоциированы с обострениями</td><td>Bossema 2013; Guedj 1990</td></tr>
+    <tr class="appendix-row"><td>Влажность</td><td><span class="ev-badge ev-g">🟢 Доказан</span></td><td>Высокая влажность (>75%) нарушает терморегуляцию, усиливает периферическую сенсибилизацию. Взаимодействует с температурой</td><td>Hagglund 1994; Wilder 2003</td></tr>
+    <tr class="appendix-row"><td>Точка росы</td><td><span class="ev-badge ev-g">🟢 Доказан</span></td><td>Более точная мера «ощущаемой» влажности; высокая точка росы (>18°C) коррелирует с усилением боли при фибромиалгии</td><td>Bossema 2013</td></tr>
+    <tr class="appendix-row"><td>Скорость ветра</td><td><span class="ev-badge ev-y">🟡 Неоднозн.</span></td><td>Холодный ветер может вызывать мышечный спазм и усиление боли. Данные противоречивы — не у всех пациентов</td><td>Shutty 1992; Sato 2013</td></tr>
+    <tr class="appendix-row"><td>Температура</td><td><span class="ev-badge ev-y">🟡 Неоднозн.</span></td><td>Холод традиционно считается триггером, однако у части пациентов жара (>30°C) также вызывает обострение. Направление индивидуально</td><td>Strusberg 2002; Neumann 2001</td></tr>
+    <tr class="appendix-row"><td>Kp-индекс (геомагн.)</td><td><span class="ev-badge ev-b">🔵 Эксперим.</span></td><td>Геомагнитные бури гипотетически влияют на мелатонин и серотонин через шишковидную железу; данные предварительные, контролируемых РКИ нет</td><td>Belyaev 2015; Рабочая гипотеза</td></tr>
+    <tr class="appendix-row"><td>Фаза луны</td><td><span class="ev-badge ev-b">🔵 Эксперим.</span></td><td>Анекдотические сообщения пациентов; механизм неизвестен; контролируемые исследования не подтвердили эффект при фибромиалгии</td><td>Рабочая гипотеза</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="disclaimer">
+  <strong>Дисклеймер:</strong> Данный отчёт создан персональным инструментом самомониторинга ФиброПогода и не является медицинским документом. Корреляции рассчитаны ранговым методом Спирмена на ограниченной выборке наблюдений одного пациента и не могут служить основой для диагностики или изменения терапии без верификации врачом. Все данные хранятся исключительно на устройстве пользователя.
+</div>
+</body></html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+}
+
+function shareRep() {
+  const text = document.getElementById('rep-body')?.innerText || '';
+  if (navigator.share) navigator.share({ title: 'ФиброПогода', text });
+  else navigator.clipboard?.writeText(text);
+}
+
+// ── MODALS ────────────────────────────────────────────
+function openMo(id) { document.getElementById(id).classList.add('on'); }
+function closeMo(id) { document.getElementById(id).classList.remove('on'); }
+
+function openWeatherDetail() {
+  const w = S.weather;
+  if (!w?.current) return;
+  const pres = +(w.current.surface_pressure * 0.75006).toFixed(1);
+  document.getElementById('wdet-body').innerHTML = `
+    <div class="rrow"><span class="rk">${LANG==='ru'?'Давление':'Pressure'}</span><span class="rv">${pres} мм рт.ст.</span></div>
+    <div class="rrow"><span class="rk">${LANG==='ru'?'Влажность':'Humidity'}</span><span class="rv">${w.current.relative_humidity_2m}%</span></div>
+    <div class="rrow"><span class="rk">${LANG==='ru'?'Температура':'Temperature'}</span><span class="rv">${w.current.temperature_2m}°C</span></div>
+    <div class="rrow"><span class="rk">${LANG==='ru'?'Точка росы':'Dew point'}</span><span class="rv">${w.current.dew_point_2m}°C</span></div>
+    <div class="rrow"><span class="rk">${LANG==='ru'?'Ветер':'Wind'}</span><span class="rv">${w.current.wind_speed_10m} км/ч</span></div>
+    ${S.location?.alt != null ? `<div class="rrow"><span class="rk">${tl('Высота','גובה','Altitude')}</span><span class="rv">${S.location.alt} м</span></div>` : ''}
+  `;
+  openMo('wmo');
+}
+
+// ── CLEAR ─────────────────────────────────────────────
+function confirmClear() {
+  const msg = LANG === 'ru' ? 'Удалить все записи? Это действие необратимо.' : 'Delete all entries? This cannot be undone.';
+  if (confirm(msg)) { S.entries = []; S.personalProfile = null; save(); renderHome(); updateAnalytics(); }
+}
+
+// ── BOOT ──────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  load();
+  applyLang();
+
+  if (!checkDisclaimer()) showDisclaimer();
+
+  if (S.location?.lat && S.name) {
+    document.getElementById('onb').style.display = 'none';
+    showMain();
+  } else {
+    document.getElementById('onb').style.display = 'flex';
+    document.getElementById('main').classList.add('hidden');
+  }
+
+  document.querySelectorAll('.mo').forEach(m => {
+    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('on'); });
+  });
+});
+</script>
+</body>
+</html>
